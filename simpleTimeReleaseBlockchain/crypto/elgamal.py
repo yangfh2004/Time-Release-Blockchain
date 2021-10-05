@@ -84,214 +84,57 @@ and get the message I had started with.  But I did not receive the right message
 decrypted it, despite having checked my encrypt and decrypt modules many times.  I fixed this by raising
 s to p-2 instead of -1 in the decryption function.
 """
-
-import random
+from typing import Optional
+from simpleTimeReleaseBlockchain.crypto.elgamal_util import *
 
 
 class PrivateKey(object):
-    def __init__(self, p: int, g: int, x: int, i_num_bits=0):
+    def __init__(self, p: int, g: int, x: int, bit_length=0):
         """Init private key structure for elgamal encryption.
 
         Args:
             p: a large prime number
             g: a generator
             x: a randomly chosen key
-            i_num_bits: bit length of the prime number
+            bit_length: bit length of the prime number
         """
         self.p = p
         self.g = g
         self.x = x
-        self.bit_length = i_num_bits
+        self.bit_length = bit_length
+
+    def __eq__(self, other):
+        if self.p == other.p and self.g == other.g and self.x == other.x and self.bit_length == other.bit_length:
+            return True
+        else:
+            return False
 
 
 class PublicKey(object):
-    def __init__(self, p: int, g: int, h: int, i_num_bits=0):
+    def __init__(self, p: int, g: int, h: int, bit_length=0):
         """Init public key structure for elgamal encryption.
 
         Args:
             p: a large prime number
             g: a generator
             h:
-            i_num_bits: bit length of the prime number
+            bit_length: bit length of the prime number
         """
         self.p = p
         self.g = g
         self.h = h
-        self.bit_length = i_num_bits
+        self.bit_length = bit_length
+        # optional attribute to carry its paired private key
         self.x = None
 
-
-def gcd(a: int, b: int) -> int:
-    """Computes the greatest common denominator of a and b.  assumes a > b.
-
-    Args:
-        a:
-        b:
-
-    Returns:
-        Greatest common denominator
-    """
-    while b != 0:
-        c = a % b
-        a = b
-        b = c
-    # a is returned if b == 0
-    return a
-
-
-def mod_exp(base: int, exp: int, modulus: int) -> int:
-    """Calling Python built-in method to implement fast modular exponentiation.
-
-    Args:
-        base:
-        exp:
-        modulus:
-
-    Returns:
-
-    """
-    return pow(base, exp, modulus)
-
-
-def solovay_strassen(num: int, i_confidence: int) -> bool:
-    """ Solovay-strassen primality test.
-    This function tests if num is prime.
-    http://www-math.ucdenver.edu/~wcherowi/courses/m5410/ctcprime.html
-
-    Args:
-        num: input integer
-        i_confidence:
-
-    Returns:
-        if pass the test
-    """
-    # ensure confidence of t
-    for idx in range(i_confidence):
-        # choose random a between 1 and n-2
-        a = random.randint(1, num - 1)
-
-        # if a is not relatively prime to n, n is composite
-        if gcd(a, num) > 1:
+    def __eq__(self, other):
+        if self.p == other.p and self.g == other.g and self.h == other.h and self.bit_length == other.bit_length:
+            return True
+        else:
             return False
 
-        # declares n prime if jacobi(a, n) is congruent to a^((n-1)/2) mod n
-        if not jacobi(a, num) % num == mod_exp(a, (num - 1) // 2, num):
-            return False
 
-    # if there have been t iterations without failure, num is believed to be prime
-    return True
-
-
-def jacobi(a: int, n: int) -> int:
-    """Computes the jacobi symbol of a, n.
-
-    Args:
-        a:
-        n:
-
-    Returns:
-
-    """
-    if a == 0:
-        if n == 1:
-            return 1
-        else:
-            return 0
-    # property 1 of the jacobi symbol
-    elif a == -1:
-        if n % 2 == 0:
-            return 1
-        else:
-            return -1
-    # if a == 1, jacobi symbol is equal to 1
-    elif a == 1:
-        return 1
-    # property 4 of the jacobi symbol
-    elif a == 2:
-        if n % 8 == 1 or n % 8 == 7:
-            return 1
-        elif n % 8 == 3 or n % 8 == 5:
-            return -1
-    # property of the jacobi symbol:
-    # if a = b mod n, jacobi(a, n) = jacobi( b, n )
-    elif a >= n:
-        return jacobi(a % n, n)
-    elif a % 2 == 0:
-        return jacobi(2, n) * jacobi(a // 2, n)
-    # law of quadratic reciprocity
-    # if a is odd and a is co-prime to n
-    else:
-        if a % 4 == 3 and n % 4 == 3:
-            return -1 * jacobi(n, a)
-        else:
-            return jacobi(n, a)
-
-
-def find_primitive_root(p: int, seed: int) -> int:
-    """Finds a primitive root for prime p.
-    This function was implemented from the algorithm described here:
-    http://modular.math.washington.edu/edu/2007/spring/ent/ent-html/node31.html
-
-    Args:
-        p:
-        seed:
-
-    Returns:
-        A primitive root for prime p.
-    """
-    random.seed(seed)
-    if p == 2:
-        return 1
-    # the prime divisors of p-1 are 2 and (p-1)/2 because
-    # p = 2x + 1 where x is a prime
-    p1 = 2
-    p2 = (p - 1) // p1
-
-    # test random g's until one is found that is a primitive root mod p
-    while True:
-        g = random.randint(2, p - 1)
-        # g is a primitive root if for all prime factors of p-1, p[i]
-        # g^((p-1)/p[i]) (mod p) is not congruent to 1
-        if not (mod_exp(g, (p - 1) // p1, p) == 1):
-            if not mod_exp(g, (p - 1) // p2, p) == 1:
-                return g
-
-
-def find_prime(i_num_bits: int, i_confidence: int, seed: int) -> int:
-    """Find a prime number p for elgamal public key.
-
-    Args:
-        i_num_bits: number of binary bits for the prime number.
-        i_confidence:
-        seed: random generator seed
-
-    Returns:
-        A prime number with requested length of bits in binary.
-    """
-    random.seed(seed)
-    # keep testing until one is found
-    while True:
-        # generate potential prime randomly
-        p = random.randint(2 ** (i_num_bits - 2), 2 ** (i_num_bits - 1))
-        # make sure it is odd
-        while p % 2 == 0:
-            p = random.randint(2 ** (i_num_bits - 2), 2 ** (i_num_bits - 1))
-
-        # keep doing this if the solovay-strassen test fails
-        while not solovay_strassen(p, i_confidence):
-            p = random.randint(2 ** (i_num_bits - 2), 2 ** (i_num_bits - 1))
-            while p % 2 == 0:
-                p = random.randint(2 ** (i_num_bits - 2), 2 ** (i_num_bits - 1))
-
-        # if p is prime compute p = 2*p + 1
-        # if p is prime, we have succeeded; else, start over
-        p = p * 2 + 1
-        if solovay_strassen(p, i_confidence):
-            return p
-
-
-#
-def encode(s_plaintext: str, i_num_bits: int) -> list[int]:
+def encode(s_plaintext: str, bit_length: int) -> list[int]:
     """Encodes bytes to integers mod p.
     Example
     if n = 24, k = n / 8 = 3
@@ -300,7 +143,7 @@ def encode(s_plaintext: str, i_num_bits: int) -> list[int]:
 
     Args:
         s_plaintext: String text to be encoded
-        i_num_bits: bit length of the prime number
+        bit_length: bit length of the prime number
 
     Returns:
         A list of encoded integers
@@ -313,7 +156,7 @@ def encode(s_plaintext: str, i_num_bits: int) -> list[int]:
     # each encoded integer will be a linear combination of k message bytes
     # k must be the number of bits in the prime divided by 8 because each
     # message byte is 8 bits long
-    k = i_num_bits // 8
+    k = bit_length // 8
 
     # j marks the jth encoded integer
     # j will start at 0 but make it -k because j will be incremented during first iteration
@@ -333,7 +176,7 @@ def encode(s_plaintext: str, i_num_bits: int) -> list[int]:
     return z
 
 
-def decode(encoded_integers: list[int], i_num_bits: int) -> str:
+def decode(encoded_integers: list[int], bit_length: int) -> str:
     """Decodes integers to the original message bytes.
     Example:
     if "You" were encoded.
@@ -350,7 +193,7 @@ def decode(encoded_integers: list[int], i_num_bits: int) -> str:
 
     Args:
         encoded_integers:
-        i_num_bits: bit length of the prime number.
+        bit_length: bit length of the prime number.
 
     Returns:
         Decoded message string.
@@ -362,7 +205,7 @@ def decode(encoded_integers: list[int], i_num_bits: int) -> str:
     # each encoded integer is a linear combination of k message bytes
     # k must be the number of bits in the prime divided by 8 because each
     # message byte is 8 bits long
-    k = i_num_bits // 8
+    k = bit_length // 8
 
     # num is an integer in list aiPlaintext
     for num in encoded_integers:
@@ -387,12 +230,12 @@ def decode(encoded_integers: list[int], i_num_bits: int) -> str:
     return decoded_text
 
 
-def generate_keys(seed: int, i_num_bits: int, i_confidence=32) -> PublicKey:
+def generate_pub_key(seed: int, bit_length: int, i_confidence=32) -> PublicKey:
     """Generates public key K1 (p, g, h) and private key K2 (p, g, x).
 
     Args:
         seed:
-        i_num_bits:
+        bit_length:
         i_confidence:
 
     Returns:
@@ -403,7 +246,7 @@ def generate_keys(seed: int, i_num_bits: int, i_confidence=32) -> PublicKey:
     # x is random in (0, p-1) inclusive
     # h = g ^ x mod p
 
-    p = find_prime(i_num_bits, i_confidence, seed)
+    p = find_prime(bit_length, i_confidence, seed)
     g = find_primitive_root(p, seed)
     # h = mod_exp(g, 2, p)
     # x = random.randint( 1, p - 1)
@@ -411,10 +254,25 @@ def generate_keys(seed: int, i_num_bits: int, i_confidence=32) -> PublicKey:
 
     h = random.randint(1, p - 1)
 
-    public_key = PublicKey(p, g, h, i_num_bits)
+    public_key = PublicKey(p, g, h, bit_length)
     # privateKey = PrivateKey(p, g, x, iNumBits)
 
     return public_key
+
+
+def find_private_key(pubkey: PublicKey) -> Optional[PrivateKey]:
+    """Find private key with brute force.
+
+    Args:
+        pubkey: public key to find its paired private key.
+
+    Returns:
+        paired private key
+    """
+    for x in range(2, pubkey.p - 1):
+        if pubkey.h == mod_exp(pubkey.g, x, pubkey.p):
+            return PrivateKey(pubkey.p, pubkey.g, x, bit_length=pubkey.bit_length)
+    return None
 
 
 def encrypt(key: PublicKey, s_plaintext: str) -> str:

@@ -6,50 +6,84 @@ import base64
 from flask import Flask, request
 from multiprocessing import Process, Pipe
 import ecdsa
+import argparse
 # import codecs
-import elgamal
-from miner_config import MINER_ADDRESS, MINER_NODE_URL, PEER_NODES
+from simpleTimeReleaseBlockchain.crypto import elgamal
 from typing import Optional
-
-# import os
 
 node = Flask(__name__)
 
-# Variables that will determine how soon it will be released
-time_ = 30
+# constant time in seconds that determine how soon the new block will be generated
+BLOCK_TIME = 30
 flag_ = 0
 # How many blocks to adjust the public key size (difficulty level)
 term = 5
 start_time = 0
+# load default miner configuration from local JSON file
+MINER_ADDRESS = ""
+MINER_NODE_URL = ""
+PEER_NODES = []
 
 
 class Block:
-    def __init__(self, index, timestamp, data, next_public, public_key_size, nonce=None, before_header_hash=None):
+    def __init__(self,
+                 height: int,
+                 timestamp,
+                 transactions,
+                 public_key: elgamal.PublicKey,
+                 public_key_size,
+                 nonce=None,
+                 prev_block_hash=None):
+        """Init time release block.
+
+        Args:
+            height: block height
+            timestamp:
+            transactions: all valid transactions in this block
+            public_key: next public key for time release
+            public_key_size: elgamal public key size as the difficulty
+            nonce:
+            prev_block_hash: hash of previous block header
+        """
         self.version = 1.0
-        self.index = index
+        self.index = height
         self.timestamp = timestamp
-        self.data = data
-        self.difficult = next_public.p
-        self.before_header_hash = before_header_hash
+        self.transactions = transactions
+        self.difficult = public_key.p
+        self.prev_block_hash = prev_block_hash
         self.nonce = nonce
-        self.public_key_size = public_key_size
-        self.next_public = next_public
+        self.difficulty = public_key_size
+        self.public_key = public_key
+        # the static hash is the sha256 object to calculate header hash with different nonce without reallocation
+        self._static_hash = hashlib.sha256()
+        self._static_hash.update((str(self.index) + str(self.timestamp) + str(self.body_hash()) +
+                                  str(self.public_key)).encode('utf-8'))
 
     def hash_header(self):
-        sha = hashlib.sha256()
-        sha.update(
-            (str(self.index) + str(self.timestamp) + str(self.body_hash) + str(self.next_public)).encode('utf-8') + str(
-                self.nonce).encode('utf-8'))
-        return sha.hexdigest()
+        """Double hash of the block header
+
+        Returns:
+            SHA256(SHA256(block_header))
+        """
+        sha1 = self._static_hash.copy()
+        sha1.update(str(self.nonce).encode('utf-8'))
+        sha2 = hashlib.sha256()
+        sha2.update(sha1.digest())
+        return sha2.digest()
 
     def body_hash(self):
+        """Instead of building the Merkel tree, hash all transactions here for simplification.
+
+        Returns:
+            SHA256 hash of transactions
+        """
         sha = hashlib.sha256()
-        sha.update(str(self.data).encode('utf-8'))
-        return sha.hexdigest()
+        sha.update(str(self.transactions).encode('utf-8'))
+        return sha.digest()
 
 
 def create_genesis_block():
-    cipher = elgamal.generate_keys(seed=0xffffffffffffff, i_num_bits=18)
+    cipher = elgamal.generate_pub_key(seed=0xffffffffffffff, bit_length=18)
     return Block(0, time.time(), {"transactions": None}, cipher, 18)
 
 
@@ -64,18 +98,18 @@ processed"""
 NODE_PENDING_TRANSACTIONS = []
 
 
-def calculate_difficulty(difficulty):
-    global flag_, start_time, time_
+def calculate_difficulty(difficulty: int):
+    global flag_, start_time, BLOCK_TIME
 
     if flag_ == 0:
         start_time = time.time()
         flag_ = 1
 
     else:
-        if time.time() - start_time > time_:
+        if time.time() - start_time > BLOCK_TIME:
             difficulty = difficulty - 1
 
-        elif time.time() - start_time < time_:
+        elif time.time() - start_time < BLOCK_TIME:
             difficulty = difficulty + 1
 
         start_time = time.time()
@@ -83,21 +117,32 @@ def calculate_difficulty(difficulty):
     return difficulty
 
 
-# TODO publicKey A function to find the paired private key by taking.
-# If other nodes are found first, False is returned..
+def proof_of_work(last_block: Block,
+                  candidate_block: Block,
+                  blockchain: list[Block]) -> tuple[Optional[Block], list[Block]]:
+    """Find private key by double hash with different nonce values
+    TODO: If other nodes are found first, False is returned..
 
-def proof_of_work(last_block, candidate_block: Block, blockchain) -> tuple[Optional[Block], list[Block]]:
+    Args:
+        last_block:
+        candidate_block:
+        blockchain:
+
+    Returns:
+
+    """
     i = 0
     init_time = time.time()
     while True:
         candidate_block.nonce = i
 
-        hash_header = int(candidate_block.hash_header(), last_block.public_key_size) % (last_block.difficult - 1) + 1
+        hash_header = int(candidate_block.hash_header(), last_block.difficulty) % (last_block.public_key.p - 1) + 1
 
-        if last_block.next_public.h == elgamal.mod_exp(last_block.next_public.g, hash_header, last_block.next_public.p):
+        # test if the header hash is the solution of the discrete log problem
+        if last_block.public_key.h == elgamal.mod_exp(last_block.public_key.g, hash_header, last_block.public_key.p):
             break
 
-        if (time.time() - init_time) > 30:
+        if (time.time() - init_time) > BLOCK_TIME:
             init_time = time.time()
             new_blockchain = consensus(blockchain)
             if new_blockchain:
@@ -126,22 +171,26 @@ def mine(connection,
             time.sleep(1)
 
         if (last_block.index + 2) % term == 2:
-            difficulty = calculate_difficulty(last_block.public_key_size)
+            difficulty = calculate_difficulty(last_block.difficulty)
 
         NODE_PENDING_TRANSACTIONS = requests.get(MINER_NODE_URL + "/txion?update=" + MINER_ADDRESS).content
         NODE_PENDING_TRANSACTIONS = json.loads(NODE_PENDING_TRANSACTIONS)
         NODE_PENDING_TRANSACTIONS.append({"from": "network", "to": MINER_ADDRESS, "amount": 1})
-        new_block_data = {"transactions": list(NODE_PENDING_TRANSACTIONS)}
+        new_transactions = {"transactions": list(NODE_PENDING_TRANSACTIONS)}
 
         new_block_index = last_block.index + 2
         new_block_timestamp = time.time()
-        before_header_hash_ = blockchain[-1].hash_header()
-        before_public = blockchain[-1].next_public
-        cipher = elgamal.generate_keys(i_num_bits=difficulty,
-                                       seed=int(before_public.p + before_public.g + before_public.h))
-        new_block_next_public = cipher
-        candidate_block = Block(new_block_index, new_block_timestamp, new_block_data, new_block_next_public, difficulty,
-                                before_header_hash=before_header_hash_)
+        prev_block_hash = blockchain[-1].hash_header()
+        prev_public_key = blockchain[-1].public_key
+        # generate new public key with previous public key
+        new_public_key = elgamal.generate_pub_key(bit_length=difficulty,
+                                                  seed=int(prev_public_key.p + prev_public_key.g + prev_public_key.h))
+        candidate_block = Block(new_block_index,
+                                new_block_timestamp,
+                                new_transactions,
+                                new_public_key,
+                                difficulty,
+                                prev_block_hash=prev_block_hash)
 
         # Find the proof of work for the current block being mined
         # Note: The program will hang here until a new proof of work is found
@@ -172,16 +221,15 @@ def mine(connection,
             blockchain.append(proof[0])
             # print("before_public_key = " + str(proof[0].key.p * proof[0].key.q))
             print(json.dumps({
-                "index": str(proof[0].index),
+                "height": str(proof[0].index),
                 "timestamp": str(proof[0].timestamp),
                 "header_hash": str(proof[0].hash_header()),
-                "difficult": str(proof[0].difficult),
-                "public_key_size": str(proof[0].public_key_size),
-                "before_header_hash": str(proof[0].before_header_hash),
-                "next_public": "( " + str(hex(proof[0].next_public.g)) + ", " + str(
-                    hex(proof[0].next_public.h)) + ", " + str(hex(proof[0].next_public.p)) + " )",
+                "difficult": str(proof[0].difficulty),
+                "prev_block_hash": str(proof[0].prev_block_hash),
+                "next_public": "( " + str(hex(proof[0].public_key.g)) + ", " + str(
+                    hex(proof[0].public_key.h)) + ", " + str(hex(proof[0].public_key.p)) + " )",
                 "nonce": "( " + str(proof[0].nonce) + " )",
-                "data": proof[0].data
+                "transactions": proof[0].transactions
             }, indent=4) + "\n")
             connection.send(blockchain)
             requests.get(MINER_NODE_URL + "/blocks?update=" + MINER_ADDRESS)
@@ -235,12 +283,12 @@ def validate_blockchain(block: Block):
 
 @node.route('/blocks', methods=['GET'])
 def get_blocks():
-    # Load current blockchain. Only you should update your blockchain
-    BLOCKCHAIN = []
+    chain_to_send = []
     if request.args.get("update") == MINER_ADDRESS:
+        # Load current blockchain. Only you should update your blockchain
         global BLOCKCHAIN
         BLOCKCHAIN = b.recv()
-    chain_to_send = BLOCKCHAIN
+        chain_to_send = BLOCKCHAIN
     # Converts our blocks into dictionaries so we can send them as json objects later
     chain_to_send_json = []
     for block in chain_to_send:
@@ -249,12 +297,12 @@ def get_blocks():
             "timestamp": str(block.timestamp),
             "body_hash": str(block.body_hash),
             "difficult": str(block.difficult),
-            "public_key_size": str(block.public_key_size),
-            "before_header_hash": str(block.before_header_hash),
-            "next_public": "( " + str(hex(block.next_public.g)) + ", " + str(hex(block.next_public.h)) + ", " + str(
-                hex(block.next_public.p)) + " )",
+            "public_key_size": str(block.difficulty),
+            "before_header_hash": str(block.prev_block_hash),
+            "next_public": "( " + str(hex(block.public_key.g)) + ", " + str(hex(block.public_key.h)) + ", " + str(
+                hex(block.public_key.p)) + " )",
             "nonce": "( " + str(block.nonce) + " )",
-            "data": block.data
+            "data": block.transactions
         }
         chain_to_send_json.append(block)
 
@@ -320,6 +368,18 @@ def welcome_msg():
 
 if __name__ == '__main__':
     welcome_msg()
+    parser = argparse.ArgumentParser(description="Load miner configuration")
+    parser.add_argument('-c', '--config', nargs='?',
+                        default='default_miner_config.json',
+                        type=argparse.FileType('r'),
+                        help='miner config file, in JSON format')
+    args = parser.parse_args()
+    # load default miner configuration from local JSON file
+    _miner_config = json.load(args.config)
+    MINER_ADDRESS = _miner_config["MINER_ADDRESS"]
+    MINER_NODE_URL = _miner_config["MINER_NODE_URL"]
+    PEER_NODES = _miner_config["PEER_NODES"]
+    args.config.close()
     # Start mining
     a, b = Pipe()
     p1 = Process(target=mine, args=(a, BLOCKCHAIN, NODE_PENDING_TRANSACTIONS))

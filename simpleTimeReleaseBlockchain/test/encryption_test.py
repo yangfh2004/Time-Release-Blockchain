@@ -1,12 +1,12 @@
-import simpleTimeReleaseBlockchain.elgamal as elgamal
+import simpleTimeReleaseBlockchain.crypto.elgamal as elgamal
 import unittest
 import sys
 
 
 class TestElgamalEncryption(unittest.TestCase):
     def setUp(self) -> None:
-        self.pub = elgamal.generate_keys(seed=833050814021254693158343911234888353695402778102174580258852673738983005,
-                                         i_num_bits=20)
+        self.pub = elgamal.generate_pub_key(seed=833050814021254693158343911234888353695402778102174580258852673738983005,
+                                            bit_length=20)
 
     def test_pubkey(self):
         self.assertEqual(0x1ff6, self.pub.g, "Public key g part is not correct!")

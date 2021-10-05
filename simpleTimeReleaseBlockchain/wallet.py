@@ -26,7 +26,7 @@ import ecdsa
 
 def wallet():
     response = None
-    while response is not "4":
+    while response != "4":
         response = input("""What do you want to do?
         1. Generate new wallet
         2. Send coins to another wallet

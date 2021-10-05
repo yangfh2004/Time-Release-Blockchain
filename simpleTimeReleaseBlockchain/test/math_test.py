@@ -1,5 +1,5 @@
 import unittest
-import simpleTimeReleaseBlockchain.elgamal as elgamal
+import simpleTimeReleaseBlockchain.crypto.elgamal as elgamal
 
 
 class GreatestCommonDivisorTests(unittest.TestCase):
