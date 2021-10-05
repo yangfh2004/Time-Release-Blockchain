@@ -275,6 +275,37 @@ def find_private_key(pubkey: PublicKey) -> Optional[PrivateKey]:
     return None
 
 
+def fast_search_private_key(pubkey: PublicKey) -> Optional[PrivateKey]:
+    """Tonelli-Shanks algorithm to find the private key with 2**(0.5 * bit_length) time complexity.
+
+    Args:
+        pubkey: elgamal public key.
+
+    Returns:
+        paired private key
+    """
+    prime = pubkey.p
+    base = pubkey.g
+    arg = pubkey.h
+    n = prime - 1
+    n = 1 + int(n ** 0.5)
+    first_list = {1: 0}
+    current = 1
+    for i in range(1, n + 1):
+        current = current * base % prime
+        if current not in first_list:
+            first_list[current] = i
+    if arg in first_list:
+        return PrivateKey(pubkey.p, pubkey.g, first_list[arg], bit_length=pubkey.bit_length)
+    else:
+        multiplier = pow(base, -n, prime)
+        for i in range(1, n + 1):
+            arg = (arg * multiplier) % prime
+            if arg in first_list:
+                return PrivateKey(pubkey.p, pubkey.g, first_list[arg] + n * i, bit_length=pubkey.bit_length)
+    return None
+
+
 def encrypt(key: PublicKey, s_plaintext: str) -> str:
     """Encrypts a string using the public key k.
 
