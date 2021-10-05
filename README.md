@@ -1,4 +1,4 @@
-# Time-Release Blockchain
+# Time-Release Blockchain and Application
 This project was a fork from [Sangoou's project](https://github.com/Sangoou/BlockchainEVote).
 
 Some English translation has been added, and some code cleanup has been done.
