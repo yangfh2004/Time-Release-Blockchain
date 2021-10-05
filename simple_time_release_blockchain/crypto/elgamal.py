@@ -85,7 +85,7 @@ decrypted it, despite having checked my encrypt and decrypt modules many times. 
 s to p-2 instead of -1 in the decryption function.
 """
 from typing import Optional
-from simpleTimeReleaseBlockchain.crypto.elgamal_util import *
+from simple_time_release_blockchain.crypto.elgamal_util import *
 
 
 class PrivateKey(object):

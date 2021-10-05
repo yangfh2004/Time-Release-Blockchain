@@ -8,7 +8,7 @@ from multiprocessing import Process, Pipe
 import ecdsa
 import argparse
 # import codecs
-from simpleTimeReleaseBlockchain.crypto import elgamal
+from simple_time_release_blockchain.crypto import elgamal
 from typing import Optional
 
 node = Flask(__name__)
