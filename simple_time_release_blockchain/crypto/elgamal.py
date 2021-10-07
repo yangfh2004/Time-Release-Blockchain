@@ -86,6 +86,7 @@ s to p-2 instead of -1 in the decryption function.
 """
 from typing import Optional
 from simple_time_release_blockchain.crypto.elgamal_util import *
+from simple_time_release_blockchain.crypto.pollard_rho import pollard_rho
 
 
 class PrivateKey(object):
@@ -275,8 +276,8 @@ def find_private_key(pubkey: PublicKey) -> Optional[PrivateKey]:
     return None
 
 
-def fast_search_private_key(pubkey: PublicKey) -> Optional[PrivateKey]:
-    """Tonelli-Shanks algorithm to find the private key with 2**(0.5 * bit_length) time complexity.
+def bsgs_search_private_key(pubkey: PublicKey) -> Optional[PrivateKey]:
+    """Tonelli-Shanks (BSGS) algorithm to find the private key with 2**(0.5 * bit_length) time complexity.
 
     Args:
         pubkey: elgamal public key.
@@ -304,6 +305,23 @@ def fast_search_private_key(pubkey: PublicKey) -> Optional[PrivateKey]:
             if arg in first_list:
                 return PrivateKey(pubkey.p, pubkey.g, first_list[arg] + n * i, bit_length=pubkey.bit_length)
     return None
+
+
+def pollard_search_private_key(pubkey: PublicKey) -> Optional[PrivateKey]:
+    """Pollard rho algorithm to find the private key.
+
+    Args:
+        pubkey: elgamal public key.
+
+    Returns:
+        paired private key
+    """
+    n = (pubkey.p - 1) // 2
+    x = pollard_rho(pubkey.g, pubkey.h, pubkey.p, n)
+    if x > 0:
+        return PrivateKey(pubkey.p, pubkey.g, x, bit_length=pubkey.bit_length)
+    else:
+        return None
 
 
 def encrypt(key: PublicKey, s_plaintext: str) -> str:

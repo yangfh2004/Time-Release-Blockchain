@@ -22,6 +22,21 @@ def gcd(a: int, b: int) -> int:
     return a
 
 
+def extended_gcd(a: int, b: int) -> tuple[int, int, int]:
+    # Base Case
+    if a == 0:
+        return b, 0, 1
+
+    gcd_l, x1, y1 = extended_gcd(b % a, a)
+
+    # Update x and y using results of recursive
+    # call
+    x = y1 - (b // a) * x1
+    y = x1
+
+    return gcd_l, x, y
+
+
 def mod_exp(base: int, exp: int, modulus: int) -> int:
     """Calling Python built-in method to implement fast modular exponentiation.
 
@@ -169,6 +184,7 @@ def find_prime(bit_length: int, i_confidence: int, seed: int) -> int:
                 p = random.randint(2 ** (bit_length - 2), 2 ** (bit_length - 1))
 
         # if p is prime compute p = 2*p + 1
+        # this step is critical to protect the encryption from Pohlig–Hellman algorithm
         # if p is prime, we have succeeded; else, start over
         p = p * 2 + 1
         if solovay_strassen(p, i_confidence):
