@@ -252,7 +252,7 @@ def generate_pub_key(seed: int, bit_length: int, i_confidence=32) -> PublicKey:
     # h = mod_exp(g, 2, p)
     # x = random.randint( 1, p - 1)
     # h = mod_exp(g,x,p)
-
+    random.seed(seed)
     h = random.randint(1, p - 1)
 
     public_key = PublicKey(p, g, h, bit_length)

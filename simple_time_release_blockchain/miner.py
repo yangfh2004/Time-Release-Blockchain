@@ -31,7 +31,6 @@ class Block:
                  timestamp,
                  transactions,
                  public_key: elgamal.PublicKey,
-                 public_key_size,
                  nonce=None,
                  prev_block_hash=None):
         """Init time release block.
@@ -41,7 +40,6 @@ class Block:
             timestamp:
             transactions: all valid transactions in this block
             public_key: next public key for time release
-            public_key_size: elgamal public key size as the difficulty
             nonce:
             prev_block_hash: hash of previous block header
         """
@@ -49,10 +47,9 @@ class Block:
         self.index = height
         self.timestamp = timestamp
         self.transactions = transactions
-        self.difficult = public_key.p
         self.prev_block_hash = prev_block_hash
         self.nonce = nonce
-        self.difficulty = public_key_size
+        self.difficulty = public_key.bit_length
         self.public_key = public_key
         # the static hash is the sha256 object to calculate header hash with different nonce without reallocation
         self._static_hash = hashlib.sha256()
@@ -83,8 +80,8 @@ class Block:
 
 
 def create_genesis_block():
-    cipher = elgamal.generate_pub_key(seed=0xffffffffffffff, bit_length=18)
-    return Block(0, time.time(), {"transactions": None}, cipher, 18)
+    cipher = elgamal.generate_pub_key(0xffffffffffffff, 18)
+    return Block(0, time.time(), {"transactions": None}, cipher)
 
 
 # Node's blockchain copy
@@ -189,7 +186,6 @@ def mine(connection,
                                 new_block_timestamp,
                                 new_transactions,
                                 new_public_key,
-                                difficulty,
                                 prev_block_hash=prev_block_hash)
 
         # Find the proof of work for the current block being mined
@@ -296,7 +292,6 @@ def get_blocks():
             "index": str(block.index),
             "timestamp": str(block.timestamp),
             "body_hash": str(block.body_hash),
-            "difficult": str(block.difficult),
             "public_key_size": str(block.difficulty),
             "before_header_hash": str(block.prev_block_hash),
             "next_public": "( " + str(hex(block.public_key.g)) + ", " + str(hex(block.public_key.h)) + ", " + str(

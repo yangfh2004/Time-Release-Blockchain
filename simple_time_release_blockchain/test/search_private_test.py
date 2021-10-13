@@ -6,7 +6,7 @@ import random
 
 class TestPrivateSearch(unittest.TestCase):
     def setUp(self) -> None:
-        self._test_len = 3
+        self._test_len = 10
         self.pub_list = []
         self.private_list = []
         for _ in range(self._test_len):
@@ -19,6 +19,7 @@ class TestPrivateSearch(unittest.TestCase):
             self.pub_list.append(elgamal.PublicKey(prime, base, h))
             self.private_list.append(x)
 
+    @unittest.skip("May skip basic pollard rho test!")
     def test_pollard_rho(self):
         """Test pollard rho with small numbers"""
         p = 383
