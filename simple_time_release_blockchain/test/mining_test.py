@@ -9,9 +9,9 @@ class TestMining(unittest.TestCase):
     def setUp(self) -> None:
         # TODO: with certain seeds, the found private keys does not match the public key but meet following equation
         # h + pow(g, private_key, p) = p, the root cause of this problem is not yet clear,
-        pubkey = elgamal.generate_pub_key(0xffffffffffff, 32)
+        self.test_pubkey = elgamal.generate_pub_key(0xffffffffffff, 32)
         # generate genesis block
-        self.test_block = Block(0, time.time(), {"transactions": None}, pubkey)
+        self.test_block = Block(0, time.time(), {"transactions": None}, self.test_pubkey)
 
     def test_pollard_rho_hash(self):
         # number of blocks to be mined
@@ -26,3 +26,6 @@ class TestMining(unittest.TestCase):
             # print("Prime = ", prime)
             self.assertEqual(expected, actual)
             self.test_block.nonce = nonce
+            self.test_pubkey = elgamal.generate_pub_key(seed=int(self.test_pubkey.p + self.test_pubkey.g +
+                                                                 self.test_pubkey.h),
+                                                        bit_length=self.test_pubkey.bit_length)
