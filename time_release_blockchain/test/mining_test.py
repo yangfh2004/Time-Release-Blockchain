@@ -18,9 +18,9 @@ class TestMining(unittest.TestCase):
         prime = self.test_block.public_key.p
         expected = self.test_block.public_key.h
         actual = elgamal.mod_exp(self.test_block.public_key.g, private_key.x, prime)
-        print("Expected = ", expected)
-        print("Actual = ", actual)
-        print("Prime = ", prime)
+        # print("Expected = ", expected)
+        # print("Actual = ", actual)
+        # print("Prime = ", prime)
         # TODO: with certain seeds, the found private keys does not match the public key but meet following equation
         # h + pow(g, private_key, p) = p, the root cause of this problem is not yet clear,
         self.assertTrue(expected == actual or prime == expected + actual)

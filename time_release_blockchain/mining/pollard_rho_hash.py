@@ -89,7 +89,7 @@ class SimplePRMiner:
             b_i = self.func_h(b_i, n, hash_1i)
             y_i = self.func_f(hash_1i, y_i)
             # print(f"y: {y_i}, a: {a_i}, b: {b_i}")
-            assert(y_i == self._calculate_y(a_i, b_i, pubkey.g, pubkey.h, pubkey.p))
+            # assert(y_i == self._calculate_y(a_i, b_i, pubkey.g, pubkey.h, pubkey.p))
 
             # Double Step calculations
             hash_2mi = self.header_hash(y_2i)
@@ -100,7 +100,7 @@ class SimplePRMiner:
             a_2i = self.func_g(a_2i, n, hash_2i)
             b_2i = self.func_h(b_2i, n, hash_2i)
             y_2i = self.func_f(hash_2i, y_2mi)
-            assert (y_2i == self._calculate_y(a_2i, b_2i, pubkey.g, pubkey.h, pubkey.p))
+            # assert (y_2i == self._calculate_y(a_2i, b_2i, pubkey.g, pubkey.h, pubkey.p))
 
             if y_i == y_2i:
                 # print("left side = ", (pow(pubkey.g, a_i, pubkey.p) * pow(pubkey.h, b_i, pubkey.p)) % pubkey.p)
