@@ -1,5 +1,5 @@
-import simple_time_release_blockchain.crypto.elgamal as elgamal
-from simple_time_release_blockchain.crypto.pollard_rho import pollard_rho
+import time_release_blockchain.crypto.elgamal as elgamal
+from time_release_blockchain.crypto.pollard_rho import pollard_rho
 import unittest
 import random
 

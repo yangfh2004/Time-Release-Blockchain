@@ -1,9 +1,9 @@
 """
 Pollard rho based hash mining algorithm.
 """
-from simple_time_release_blockchain.miner import Block
-from simple_time_release_blockchain.crypto.elgamal import PublicKey
-from simple_time_release_blockchain.crypto.pollard_rho import func_g, func_h, pollard_eqs_solver
+from time_release_blockchain.miner import Block
+from time_release_blockchain.crypto.elgamal import PublicKey
+from time_release_blockchain.crypto.pollard_rho import func_g, func_h, pollard_eqs_solver
 from random import randint
 
 
