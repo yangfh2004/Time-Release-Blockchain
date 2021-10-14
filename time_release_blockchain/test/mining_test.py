@@ -1,5 +1,5 @@
 import time_release_blockchain.crypto.elgamal as elgamal
-import time_release_blockchain.mining.pollard_rho_hash as pr_hash
+from time_release_blockchain.mining.pollard_rho_hash import PRSolution, SimplePRMiner
 from time_release_blockchain.miner import Block
 import unittest
 import time
@@ -12,15 +12,17 @@ class TestMining(unittest.TestCase):
         self.test_pubkey = elgamal.generate_pub_key(0xffffffffffff, 32)
         # generate genesis block
         self.test_block = Block(0, time.time(), {"transactions": None}, self.test_pubkey)
+        self.test_miner = SimplePRMiner(self.test_block)
 
-    def test_pollard_rho_hash(self):
+    def test_simple_miner(self):
         # number of blocks to be mined
         block_len = 10
         for _ in range(block_len):
-            nonce, private_key = pr_hash.pollard_rho_hash(self.test_block)
+            nonce, solution = self.test_miner.mining()
+            private_key = solution.generate_private_key()
             prime = self.test_block.public_key.p
             expected = self.test_block.public_key.h
-            actual = elgamal.mod_exp(self.test_block.public_key.g, private_key, prime)
+            actual = elgamal.mod_exp(self.test_block.public_key.g, private_key.x, prime)
             # print("Expected = ", expected)
             # print("Actual = ", actual)
             # print("Prime = ", prime)
