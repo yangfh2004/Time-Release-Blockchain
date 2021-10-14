@@ -85,8 +85,8 @@ decrypted it, despite having checked my encrypt and decrypt modules many times. 
 s to p-2 instead of -1 in the decryption function.
 """
 from typing import Optional
-from simple_time_release_blockchain.crypto.elgamal_util import *
-from simple_time_release_blockchain.crypto.pollard_rho import pollard_rho
+from time_release_blockchain.crypto.elgamal_util import *
+from time_release_blockchain.crypto.pollard_rho import pollard_rho
 
 
 class PrivateKey(object):
@@ -252,7 +252,7 @@ def generate_pub_key(seed: int, bit_length: int, i_confidence=32) -> PublicKey:
     # h = mod_exp(g, 2, p)
     # x = random.randint( 1, p - 1)
     # h = mod_exp(g,x,p)
-
+    random.seed(seed)
     h = random.randint(1, p - 1)
 
     public_key = PublicKey(p, g, h, bit_length)

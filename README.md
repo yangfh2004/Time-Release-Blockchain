@@ -17,7 +17,7 @@ Moreover, some flaws in existing design would be fixed in our new design.
 * vote
     - Electronic voting smart contract which is written in Solidity
 
-* simple_time_release_blockchain
+* time_release_blockchain
   
   - This project is based on a simplified Time Release blockchain with some modification to fit modern Python 3.9
     - [SimpleCoin](https://github.com/cosme12/SimpleCoin) 

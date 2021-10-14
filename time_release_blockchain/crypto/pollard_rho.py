@@ -3,6 +3,7 @@ Source: Handbook of Applied Cryptography chapter-3
         http://cacr.uwaterloo.ca/hac/about/chap3.pdf
 """
 from Crypto.Util.number import *
+from random import randint
 
 
 def func_f(x_i, base, y, p):
@@ -50,6 +51,40 @@ def func_h(b, n, p, x_i):
         return -1
 
 
+def pollard_eqs_solver(a1, b1, a2, b2, n):
+    """
+    If x_i == x_2i is True
+    ==> (base^(a1))*(y^(b1)) = (base^(a2))*(y^(b2)) (mod p)
+    ==> y^(b1 - b2) = base^(a2 - a1)                (mod p)
+    ==> base^((b1 - b2)*x) = base^(a2 - a1)         (mod p)
+    ==> (b1 - b2)*x = (a2 - a1)                     (mod n)
+    r = (b1 - b2) % n
+    if GCD(r, n) == 1 then,
+    ==> x = (r^(-1))*(a2 - a1)                      (mod n)
+    """
+    r = (b1 - b2) % n
+    if r == 0:
+        print("[-] b1 = b2, returning -1")
+        return -1
+    else:
+        """
+        If `n` is not a prime number this algorithm will not be able to
+        solve the DLP, because GCD(r, n) != 1 then and one will have to
+        write an implementation to solve the equation:
+            (b1 - b2)*x = (a2 - a1) (mod n)
+        This equation will have multiple solutions out of which only one
+        will be the actual solution
+        """
+        div = GCD(r, n)
+        if div == 1:
+            return (inverse(r, n) * (a2 - a1)) % n
+        else:
+            res_l = (b1 - b2) // div
+            res_r = (a2 - a1) // div
+            p1 = n // div
+            return (inverse(res_l, p1) * res_r) % p1
+
+
 def pollard_rho(base: int, y: int, p: int, n: int):
     """
     Refer to section 3.6.3 of Handbook of Applied Cryptography
@@ -66,13 +101,13 @@ def pollard_rho(base: int, y: int, p: int, n: int):
     Returns:
 
     """
-    x_i = 1
-    x_2i = 1
+    a_i = randint(0, n)
+    b_i = randint(0, n)
+    a_2i = a_i
+    b_2i = b_i
 
-    a_i = 0
-    b_i = 0
-    a_2i = 0
-    b_2i = 0
+    x_i = (pow(base, a_i, p) * pow(y, b_i, p)) % p
+    x_2i = x_i
 
     i = 1
     while i <= n:
@@ -82,43 +117,13 @@ def pollard_rho(base: int, y: int, p: int, n: int):
         x_i = func_f(x_i, base, y, p)
 
         # Double Step calculations
-        a_2i = func_g(func_g(a_2i, n, p, x_2i), n, p, func_f(x_2i, base, y, p))
-        b_2i = func_h(func_h(b_2i, n, p, x_2i), n, p, func_f(x_2i, base, y, p))
-        x_2i = func_f(func_f(x_2i, base, y, p), base, y, p)
+        xm_2i = func_f(x_2i, base, y, p)
+        a_2i = func_g(func_g(a_2i, n, p, x_2i), n, p, xm_2i)
+        b_2i = func_h(func_h(b_2i, n, p, x_2i), n, p, xm_2i)
+        x_2i = func_f(xm_2i, base, y, p)
 
         if x_i == x_2i:
-            """
-            If x_i == x_2i is True
-            ==> (base^(a_i))*(y^(b_i)) = (base^(a_2i))*(y^(b_2i)) (mod p)
-            ==> y^(b_i - b_2i) = base^(a_2i - a_i)                (mod p)
-            ==> base^((b_i - b_2i)*x) = base^(a_2i - a_i)         (mod p)
-            ==> (b_i - b_2i)*x = (a_2i - a_i)                     (mod n)
-            r = (b_i - b_2i) % n
-            if GCD(r, n) == 1 then,
-            ==> x = (r^(-1))*(a_2i - a_i)                         (mod n)
-            """
-            r = (b_i - b_2i) % n
-            if r == 0:
-                print("[-] b_i = b_2i, returning -1")
-                return -1
-            else:
-                """
-                If `n` is not a prime number this algorithm will not be able to
-                solve the DLP, because GCD(r, n) != 1 then and one will have to
-                write an implementation to solve the equation:
-                    (b_i - b_2i)*x = (a_2i - a_i) (mod n)
-                This equation will have multiple solutions out of which only one
-                will be the actual solution
-                """
-                div = GCD(r, n)
-                if div == 1:
-                    return (inverse(r, n)*(a_2i - a_i)) % n
-                else:
-                    res_l = (b_i - b_2i) // div
-                    res_r = (a_2i - a_i) // div
-                    p1 = n // div
-                    return (inverse(res_l, p1)*res_r) % p1
-
+            return pollard_eqs_solver(a_i, b_i, a_2i, b_2i, n)
         else:
             i += 1
             continue
