@@ -1,10 +1,12 @@
 """
 Pollard rho based hash mining algorithm.
 """
-from time_release_blockchain.miner import Block
-from time_release_blockchain.crypto.elgamal import PrivateKey, gcd
+from time_release_blockchain.block import Block
+from time_release_blockchain.crypto.elgamal import PrivateKey
 from time_release_blockchain.crypto.pollard_rho import func_g, func_h, pollard_eqs_solver
 from random import randint
+from typing import Optional
+import time
 
 
 class PRSolution:
@@ -24,8 +26,9 @@ class PRSolution:
 
 class SimplePRMiner:
     """A pollard rho miner uses textbook mapping functions to search private key."""
-    def __init__(self, block: Block):
+    def __init__(self, block: Block, block_time=0):
         self.block = block
+        self.block_time = block_time
 
     def header_hash(self, nonce: int) -> int:
         self.block.nonce = nonce
@@ -60,7 +63,7 @@ class SimplePRMiner:
     def _calculate_y(a, b, g, h, p):
         return (pow(g, a, p) * pow(h, b, p)) % p
 
-    def mining(self) -> tuple[int, PRSolution]:
+    def mining(self) -> tuple[int, Optional[PRSolution]]:
         """
         Refer to section 3.6.3 of Handbook of Applied Cryptography
         Computes `x` = a mod n for the DLP base**x % p == y
@@ -82,7 +85,8 @@ class SimplePRMiner:
         y_2i = y_i
 
         i = 1
-        while i <= n:
+        init_time = time.time()
+        while i <= n and (time.time() - init_time) < self.block_time:
             # Single Step calculations
             hash_1i = self.header_hash(y_i)
             a_i = self.func_g(a_i, n, hash_1i)
@@ -111,7 +115,8 @@ class SimplePRMiner:
             else:
                 i += 1
                 continue
-        raise ValueError("The mining is not successful!")
+        print("The mining is not successful!")
+        return 0, None
 
 
 class PRMiner(SimplePRMiner):

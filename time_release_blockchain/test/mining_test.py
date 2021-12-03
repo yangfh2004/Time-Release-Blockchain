@@ -1,6 +1,6 @@
 import time_release_blockchain.crypto.elgamal as elgamal
 from time_release_blockchain.mining.pollard_rho_hash import PRMiner, SimplePRMiner
-from time_release_blockchain.miner import Block
+from time_release_blockchain.block import Block
 import unittest
 import time
 
@@ -11,6 +11,7 @@ class TestMining(unittest.TestCase):
         # generate genesis block
         self.test_block = Block(0, time.time(), {"transactions": None}, test_pubkey)
         self.test_miner = None
+        self.test_block_time = 600
 
     def _block_mining(self):
         nonce, solution = self.test_miner.mining()
@@ -32,7 +33,7 @@ class TestMining(unittest.TestCase):
     @unittest.skip("Simple miner has been verified")
     def test_simple_miner(self):
         """Test simple but unsecured mining method."""
-        self.test_miner = SimplePRMiner(self.test_block)
+        self.test_miner = SimplePRMiner(self.test_block, self.test_block_time)
         # number of blocks to be mined
         block_len = 5
         for _ in range(block_len):
@@ -40,7 +41,7 @@ class TestMining(unittest.TestCase):
 
     def test_safe_miner(self):
         """Test safe mining method."""
-        self.test_miner = PRMiner(self.test_block)
+        self.test_miner = PRMiner(self.test_block, self.test_block_time)
         block_len = 5
         for _ in range(block_len):
             self._block_mining()

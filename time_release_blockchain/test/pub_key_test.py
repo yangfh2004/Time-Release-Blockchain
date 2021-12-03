@@ -8,7 +8,7 @@ class TestPubKey(unittest.TestCase):
         # test with a big prime number
         self._seed = 833050814021254693158343911234888353695402778102174580258852673738983005
         self._pub_length = 100
-        self._bit_length = 32
+        self._bit_length = 64
         self.genesis_pub = elgamal.generate_pub_key(seed=self._seed, bit_length=self._bit_length)
         self.pub_list = []
         pub = self.genesis_pub
