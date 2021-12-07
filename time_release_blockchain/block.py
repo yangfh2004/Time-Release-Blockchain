@@ -4,7 +4,7 @@ import time_release_blockchain.crypto.elgamal as elgamal
 
 
 def create_genesis_block():
-    cipher = elgamal.generate_pub_key(0xffffffffffffff, 18)
+    cipher = elgamal.generate_pub_key(0xffffffffffff, 32)
     return Block(0, time.time(), {"transactions": None}, cipher)
 
 
