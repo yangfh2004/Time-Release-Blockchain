@@ -8,6 +8,8 @@ from typing import Optional
 import ecdsa
 import argparse
 from os import environ
+import sys
+import copy
 # import codecs
 from time_release_blockchain.crypto import elgamal
 from time_release_blockchain.mining.pollard_rho_hash import PRMiner
@@ -53,15 +55,13 @@ def calculate_difficulty(difficulty: int):
     return difficulty
 
 
-def proof_of_work(last_block: Block,
-                  candidate_block: Block,
+def proof_of_work(candidate_block: Block,
                   blockchain: list[Block],
                   peer_nodes) -> tuple[Optional[Block], list[Block]]:
     """Find private key by double hash with different nonce values
     TODO: If other nodes are found first, False is returned..
 
     Args:
-        last_block:
         candidate_block:
         blockchain:
         peer_nodes:
@@ -69,20 +69,30 @@ def proof_of_work(last_block: Block,
     Returns:
 
     """
-    miner = PRMiner(candidate_block)
+    miner = PRMiner(candidate_block, block_time=BLOCK_TIME)
     nonce, solution = miner.mining()
     if nonce and solution:
         private_key = solution.generate_private_key()
-        prime = last_block.public_key.p
-        expected = last_block.public_key.h
-        actual = elgamal.mod_exp(last_block.public_key.g, private_key.x, prime)
+        prime = candidate_block.public_key.p
+        expected = candidate_block.public_key.h
+        actual = elgamal.mod_exp(candidate_block.public_key.g, private_key.x, prime)
         # test if the private key match the public key
         if expected == actual or prime == expected + actual:
             return candidate_block, blockchain
+        else:
+            return None, blockchain
     else:
         new_blockchain = consensus(blockchain, peer_nodes)
         if new_blockchain:
             return None, new_blockchain
+        else:
+            return None, blockchain
+
+
+def make_pickle_able(block: Block):
+    new_block = copy.copy(block)
+    delattr(new_block, '_static_hash')
+    return new_block
 
 
 def mine(connection,
@@ -96,7 +106,7 @@ def mine(connection,
     peer_nodes = miner_config["PEER_NODES"]
     BLOCKCHAIN = blockchain
     NODE_PENDING_TRANSACTIONS = node_pending_transactions
-
+    print("Start miner!", file=sys.stdout)
     while True:
         """Mining is the only way that new coins can be created.
         In order to prevent too many coins to be created, the process
@@ -111,8 +121,10 @@ def mine(connection,
         if (last_block.index + 2) % term == 2:
             difficulty = calculate_difficulty(last_block.difficulty)
 
-        NODE_PENDING_TRANSACTIONS = requests.get(miner_node_url + "/txion?update=" + miner_address).content
-        NODE_PENDING_TRANSACTIONS = json.loads(NODE_PENDING_TRANSACTIONS)
+        req = miner_node_url + "/txion?update=" + miner_address
+        print(req, file=sys.stdout)
+        # NODE_PENDING_TRANSACTIONS = requests.get(req).content
+        # NODE_PENDING_TRANSACTIONS = json.loads(NODE_PENDING_TRANSACTIONS)
         # add the mining reward 1 token as coinbase transaction
         NODE_PENDING_TRANSACTIONS.append({"from": "network", "to": miner_address, "amount": 1})
         new_transactions = {"transactions": list(NODE_PENDING_TRANSACTIONS)}
@@ -132,12 +144,13 @@ def mine(connection,
 
         # Find the proof of work for the current block being mined
         # Note: The program will hang here until a new proof of work is found
-        proof = proof_of_work(last_block, candidate_block, blockchain, peer_nodes)
+        proof = proof_of_work(candidate_block, blockchain, peer_nodes)
         # If we didn't guess the proof, start mining again
-        if not proof[0]:
+        if proof[0] is None:
             # Update blockchain and save it to file
             blockchain = proof[1]
-            connection.send(blockchain)
+            updated_chain = [make_pickle_able(block) for block in blockchain]
+            connection.send(updated_chain)
             continue
         else:
             # Once we find a valid proof of work, we know we can mine a block so
@@ -160,7 +173,8 @@ def mine(connection,
                 "nonce": "( " + str(proof[0].nonce) + " )",
                 "transactions": proof[0].transactions
             }, indent=4) + "\n")
-            connection.send(blockchain)
+            updated_chain = [make_pickle_able(block) for block in blockchain]
+            connection.send(updated_chain)
             requests.get(miner_node_url + "/blocks?update=" + miner_address)
 
 
@@ -312,4 +326,4 @@ if __name__ == '__main__':
     p1 = Process(target=mine, args=(a, BLOCKCHAIN, NODE_PENDING_TRANSACTIONS, _miner_config))
     p1.start()
     # Start server to receive transactions
-    node.run(debug=True)
+    node.run()
