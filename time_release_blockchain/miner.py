@@ -7,12 +7,15 @@ from multiprocessing import Process, Pipe
 from typing import Optional
 import ecdsa
 import argparse
+from os import environ
 # import codecs
 from time_release_blockchain.crypto import elgamal
 from time_release_blockchain.mining.pollard_rho_hash import PRMiner
 from time_release_blockchain.block import Block, create_genesis_block
 
 node = Flask(__name__)
+a, b = Pipe()
+node.config['CONNECTION'] = b
 
 # constant time in seconds that determine how soon the new block will be generated
 BLOCK_TIME = 30
@@ -210,11 +213,12 @@ def validate_blockchain(block: Block):
 @node.route('/blocks', methods=['GET'])
 def get_blocks():
     chain_to_send = []
-    miner_address = _miner_config["MINER_ADDRESS"]
+    connection = node.config['CONNECTION']
+    miner_address = environ.get('MINER_ADDRESS')
     if request.args.get("update") == miner_address:
         # Load current blockchain. Only you should update your blockchain
         global BLOCKCHAIN
-        BLOCKCHAIN = b.recv()
+        BLOCKCHAIN = connection.recv()
         chain_to_send = BLOCKCHAIN
     # Converts our blocks into dictionaries so we can send them as json objects later
     chain_to_send_json = []
@@ -243,7 +247,7 @@ def transaction():
     Then it waits to be added to the blockchain. Transactions only move
     coins, they don't create it.
     """
-    miner_address = _miner_config["MINER_ADDRESS"]
+    miner_address = environ.get("MINER_ADDRESS")
     if request.method == 'POST':
         # On each new POST request, we extract the transaction data
         new_txion = request.get_json()
@@ -305,9 +309,7 @@ if __name__ == '__main__':
     _miner_config = json.load(args.config)
     args.config.close()
     # Start mining
-    a, b = Pipe()
     p1 = Process(target=mine, args=(a, BLOCKCHAIN, NODE_PENDING_TRANSACTIONS, _miner_config))
     p1.start()
     # Start server to receive transactions
-    p2 = Process(target=node.run(), args=(b, _miner_config))
-    p2.start()
+    node.run(debug=True)
