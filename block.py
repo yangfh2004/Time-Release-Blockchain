@@ -1,18 +1,18 @@
 import time
 import hashlib
-import time_release_blockchain.crypto.elgamal as elgamal
+import crypto.elgamal as elgamal
 
 
 def create_genesis_block():
     cipher = elgamal.generate_pub_key(0xffffffffffff, 32)
-    return Block(0, time.time(), {"transactions": None}, cipher)
+    return Block(0, time.time(), [], cipher)
 
 
 class Block:
     def __init__(self,
                  height: int,
-                 timestamp,
-                 transactions,
+                 timestamp: float,
+                 transactions: list,
                  public_key: elgamal.PublicKey,
                  nonce=None,
                  prev_block_hash=None):
@@ -36,6 +36,21 @@ class Block:
         self.public_key = public_key
         # the static hash is the sha256 object to calculate header hash with different nonce without reallocation
         self._static_hash = None
+        # this static header hash is for database retrieved block only, so that do not recalculate hash value
+        self.current_block_hash = None
+
+    def get_dict(self):
+        return {
+            "height": self.index,
+            "timestamp": self.timestamp,
+            "header_hash": self.hash_header(),
+            "difficulty": self.difficulty,
+            "prev_block_hash": self.prev_block_hash,
+            "public_key": str(hex(self.public_key.g)) + ", " + str(
+                hex(self.public_key.h)) + ", " + str(hex(self.public_key.p)),
+            "nonce": self.nonce,
+            "transactions": str(self.transactions)
+        }
 
     def hash_header(self):
         """Double hash of the block header

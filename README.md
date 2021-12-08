@@ -1,24 +1,31 @@
 # Time-Release Blockchain and Application
 This project was a fork from [Sangoou's project](https://github.com/Sangoou/BlockchainEVote).
 
-Some English translation has been added, and some code cleanup has been done.
+This project is based on a simplified PoW blockchain with some modification to fit modern Python 3.9
+    - [SimpleCoin](https://github.com/cosme12/SimpleCoin) 
 
 In this repo, we aim to provide educational materials to test and learn a new design for time-release blockchain technology.
 Moreover, some flaws in existing design would be fixed in our new design.
 
-## Directory Structure
+This is a very simple Python implementation of main ideas for time-release blockchain and its core functionalities.
 
-* reference
-    - summary of papers referenced in this project (most commented in Korean)
+## Directories
+* crypto - Discrete Log Problem Based Crypto system (e.g. elgamal) implementation in Python for 
+  encryption and decryption of data
+* mining - Mining module which provide time-release functionality and blockchain PoW mining work
+* test - Test codes
 
-* app
-    - A web application that implement electronic voting system which is written in Solidity
+## Files in Root Dir
 
-* vote
-    - Electronic voting smart contract which is written in Solidity
-
-* time_release_blockchain
-  
-  - This project is based on a simplified Time Release blockchain with some modification to fit modern Python 3.9
-    - [SimpleCoin](https://github.com/cosme12/SimpleCoin) 
+- miner_config.py - default configuration settings for current miner, you may add your customize configurations
+- miner.py - the core miner code to run
+    - optional argument '-c' or '--config' for your custom miner config json file. For example, if you have a config file
+  named as "custom_miner_config.json", you may use below command to run with it.
+    ```shell
+    python3 miner.py -c custom_miner_config.json
+    ```
+- wallet.py - the core wallet code for sending and receiving tokens for this blockchain
+  - if you run the wallet.py, it may generate a public key and private key for transaction as stored in the "test_miner.txt"
+  file. Note that this key pair is based on ECDSA which is only for transaction but not time-release data encryption.
+- app.py - the Flask app to provide web service  between miner nodes and frontend wallet.
 
