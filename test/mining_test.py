@@ -1,6 +1,6 @@
-import time_release_blockchain.crypto.elgamal as elgamal
-from time_release_blockchain.mining.pollard_rho_hash import PRMiner, SimplePRMiner
-from time_release_blockchain.block import Block
+import crypto.elgamal as elgamal
+from mining.pollard_rho_hash import PRMiner, SimplePRMiner
+from block import Block
 import unittest
 import time
 

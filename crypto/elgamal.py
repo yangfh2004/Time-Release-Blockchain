@@ -85,8 +85,8 @@ decrypted it, despite having checked my encrypt and decrypt modules many times. 
 s to p-2 instead of -1 in the decryption function.
 """
 from typing import Optional
-from time_release_blockchain.crypto.elgamal_util import *
-from time_release_blockchain.crypto.pollard_rho import pollard_rho
+from crypto.elgamal_util import *
+from crypto.pollard_rho import pollard_rho
 
 
 class PrivateKey(object):
@@ -127,6 +127,17 @@ class PublicKey(object):
         self.bit_length = bit_length
         # optional attribute to carry its paired private key
         self.x = None
+
+    @classmethod
+    def from_hex_str(cls, key_str: str, bit_length=0):
+        """generate a public key from string"""
+        keys = key_str.split(',')
+        if len(keys) < 3:
+            raise ValueError("The input string is not valid")
+        p = int(keys[0], 16)
+        g = int(keys[1], 16)
+        h = int(keys[2], 16)
+        return PublicKey(p, g, h, bit_length=bit_length)
 
     def __eq__(self, other):
         if self.p == other.p and self.g == other.g and self.h == other.h and self.bit_length == other.bit_length:

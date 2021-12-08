@@ -26,17 +26,18 @@ import ecdsa
 
 def wallet():
     response = None
-    while response != "4":
+    while response != "5":
         response = input("""What do you want to do?
         1. Generate new wallet
         2. Send coins to another wallet
         3. Check transactions
-        4. Quit\n""")
+        4. Print miner logs
+        5. Quit\n""")
         if response == "1":
             # Generate new wallet
             print("""=========================================\n
-    IMPORTANT: save this credentials or you won't be able to recover your wallet\n
-    =========================================\n""")
+                    IMPORTANT: save this credentials or you won't be able to recover your wallet\n
+                    =========================================\n""")
             generate_ecdsa_keys()
         elif response == "2":
             addr_from = input("From: introduce your wallet address (public key)\n")
@@ -51,6 +52,8 @@ def wallet():
                 send_transaction(addr_from, private_key, addr_to, amount)
         elif response == "3":
             check_transactions()
+        elif response == "4":
+            check_logs()
 
 
 def send_transaction(addr_from, private_key, addr_to, amount):
@@ -87,6 +90,12 @@ def check_transactions():
     wallets balance. If the blockchain is to long, it may take some time to load.
     """
     res = requests.get('http://127.0.0.1:5000/blocks')
+    print(res.text)
+
+
+def check_logs():
+    """Get the status logs from the miner."""
+    res = requests.get('http://127.0.0.1:5000/logs')
     print(res.text)
 
 
