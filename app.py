@@ -35,7 +35,7 @@ def get_logs():
     db = dataset.connect(BLOCKCHAIN_DB_URL)
     logs = []
     for log in db['logs']:
-        log['timestamp'] = log['timestamp'].strftime("%d/%m/%Y %H:%M:%S")
+        log['timestamp'] = log['timestamp'].strftime("%m/%d/%Y %H:%M:%S")
         logs.append(log)
     return json.dumps(logs)
 

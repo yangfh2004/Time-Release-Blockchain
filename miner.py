@@ -109,8 +109,12 @@ def mine(blockchain: list[Block],
 
         new_block_index = last_block.index + 1
         new_block_timestamp = time.time()
-        prev_block_hash = blockchain[-1].hash_header()
-        prev_public_key = blockchain[-1].public_key
+        # avoid to recalculate block hash if the block data is retrieved from database
+        if last_block.current_block_hash:
+            prev_block_hash = last_block.current_block_hash
+        else:
+            prev_block_hash = last_block.hash_header()
+        prev_public_key = last_block.public_key
         # generate new public key with previous public key
         new_public_key = elgamal.generate_pub_key(bit_length=difficulty,
                                                   seed=int(prev_public_key.p + prev_public_key.g + prev_public_key.h))
