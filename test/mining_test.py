@@ -1,6 +1,6 @@
 import crypto.elgamal as elgamal
 from mining.pollard_rho_hash import PRMiner, SimplePRMiner
-from block import Block
+from blockchain.block import Block
 import unittest
 import time
 

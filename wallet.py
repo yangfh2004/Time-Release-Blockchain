@@ -19,9 +19,10 @@ node_pending_transactions list to avoid it get processed more than 1 time.
 """
 
 import requests
-import time
-import base64
-import ecdsa
+import crypto.elgamal as elgamal
+from blockchain.block import Block
+from crypto.tx_sign import generate_ecdsa_keys, sign_ecdsa_data
+from miner import BLOCK_TIME
 
 
 def wallet():
@@ -44,42 +45,75 @@ def wallet():
             private_key = input("Introduce your private key\n")
             addr_to = input("To: introduce destination wallet address\n")
             amount = input("Amount: number stating how much do you want to send\n")
+            msg = input("Hidden/Locked Message: the message going to be release in the future\n")
+            lock_time = input("Lock Time (sec): time for locking the message")
             print("=========================================\n\n")
             print("Is everything correct?\n")
             print(F"From: {addr_from}\nPrivate Key: {private_key}\nTo: {addr_to}\nAmount: {amount}\n")
+            print(f"Message: {msg}\n The message is going to be release after {lock_time} second.")
             response = input("y/n\n")
             if response.lower() == "y":
-                send_transaction(addr_from, private_key, addr_to, amount)
+                try:
+                    lock_time_s = int(lock_time)
+                    send_transaction(addr_from, private_key, addr_to, amount, msg, lock_time_s)
+                except ValueError:
+                    print(f"{lock_time} is not a valid input for time release encryption.")
+
         elif response == "3":
             check_transactions()
         elif response == "4":
             check_logs()
 
 
-def send_transaction(addr_from, private_key, addr_to, amount):
-    """Sends your transaction to different nodes. Once any of the nodes manage
+def send_transaction(addr_from, private_key, addr_to, amount, msg=None, lock_time=0):
+    """
+    Sends your transaction to different nodes. Once any of the nodes manage
     to mine a block, your transaction will be added to the blockchain. Despite
     that, there is a low chance your transaction gets canceled due to other nodes
     having a longer chain. So make sure your transaction is deep into the chain
     before claiming it as approved!
+
+    Args:
+        addr_from: send tx from address
+        private_key: private key to sign the tx
+        addr_to: send tx to address
+        amount: amount of token to be sent
+        msg: message to be release in the future
+        lock_time: time for locking the message before its release
+
+    Returns:
+
     """
-    # For fast debugging REMOVE LATER
-    # private_key="181f2448fa4636315032e15bb9cbc3053e10ed062ab0b2680a37cd8cb51f53f2"
-    # amount="3000"
-    # addr_from="SD5IZAuFixM3PTmkm5ShvLm1tbDNOmVlG7tg6F5r7VHxPNWkNKbzZfa+JdKmfBAIhWs9UKnQLOOL1U+R3WxcsQ=="
-    # addr_to="SD5IZAuFixM3PTmkm5ShvLm1tbDNOmVlG7tg6F5r7VHxPNWkNKbzZfa+JdKmfBAIhWs9UKnQLOOL1U+R3WxcsQ=="
-
     if len(private_key) == 64:
-        signature, message = sign_ecdsa_msg(private_key)
+        # tx ID is omitted instead of using address to query tx data from database
+        # for simplification of implementation
+        # prepare tx info and signature
+        data = {"from": addr_from,
+                "to": addr_to,
+                "amount": amount,
+        }
+        signature = sign_ecdsa_data(private_key, data)
         url = 'http://127.0.0.1:5000/txion'
-        payload = {"from": addr_from,
-                   "to": addr_to,
-                   "amount": amount,
-                   "signature": signature.decode(),
-                   "message": message}
+        # decode signature bytes into utf-8 string
+        data["signature"] = signature.decode()
         headers = {"Content-Type": "application/json"}
-
-        res = requests.post(url, json=payload, headers=headers)
+        if msg and lock_time > 0:
+            # prepare time release encryption
+            block_res = requests.get('http://127.0.0.1:5000/last')
+            block_data = block_res.json()
+            last_block = Block.from_db(block_data)
+            # after a number of block, the encrypted message will be released
+            block_interval = lock_time//BLOCK_TIME
+            future_pub_key = last_block.public_key
+            # derive future public key
+            for _ in range(block_interval):
+                future_pub_key = elgamal.generate_pub_key(seed=int(future_pub_key.p + future_pub_key.g + future_pub_key.h),
+                                                          bit_length=future_pub_key.bit_length)
+            # encrypt time release message
+            cipher = elgamal.encrypt(future_pub_key, msg)
+            data['release_block'] = last_block.height + block_interval
+            data['message'] = cipher
+        res = requests.post(url, json=data, headers=headers)
         print(res.text)
     else:
         print("Wrong address or key length! Verify and try again.")
@@ -97,43 +131,6 @@ def check_logs():
     """Get the status logs from the miner."""
     res = requests.get('http://127.0.0.1:5000/logs')
     print(res.text)
-
-
-def generate_ecdsa_keys():
-    """This function takes care of creating your private and public (your address) keys.
-    It's very important you don't lose any of them or those wallets will be lost
-    forever. If someone else get access to your private key, you risk losing your coins.
-
-    private_key: str
-    public_ley: base64 (to make it shorter)
-    """
-    sk = ecdsa.SigningKey.generate(curve=ecdsa.SECP256k1)  # this is your sign (private key)
-    private_key = sk.to_string().hex()  # convert your private key to hex
-    vk = sk.get_verifying_key()  # this is your verification key (public key)
-    public_key = vk.to_string().hex()
-    # we are going to encode the public key to make it shorter
-    public_key = base64.b64encode(bytes.fromhex(public_key))
-
-    filename = input("Write the name of your new address: ") + ".txt"
-    with open(filename, "w") as f:
-        f.write(F"Private key: {private_key}\nWallet address / Public key: {public_key.decode()}")
-    print(F"Your new address and private key are now in the file {filename}")
-
-
-def sign_ecdsa_msg(private_key):
-    """Sign the message to be sent
-    private_key: must be hex
-
-    return
-    signature: base64 (to make it shorter)
-    message: str
-    """
-    # Get timestamp, round it, make it into a string and encode it to bytes
-    message = str(round(time.time()))
-    binary_msg = message.encode()
-    sk = ecdsa.SigningKey.from_string(bytes.fromhex(private_key), curve=ecdsa.SECP256k1)
-    signature = base64.b64encode(sk.sign(binary_msg))
-    return signature, message
 
 
 if __name__ == '__main__':
