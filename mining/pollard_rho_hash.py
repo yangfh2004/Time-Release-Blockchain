@@ -1,7 +1,7 @@
 """
 Pollard rho based hash mining algorithm.
 """
-from block import Block
+from blockchain.block import Block
 from crypto.elgamal import PrivateKey
 from crypto.pollard_rho import func_g, func_h, pollard_eqs_solver
 from random import randint

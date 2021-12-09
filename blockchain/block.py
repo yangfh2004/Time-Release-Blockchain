@@ -27,7 +27,7 @@ class Block:
             prev_block_hash: hash of previous block header
         """
         self.version = 1.0
-        self.index = height
+        self.height = height
         self.timestamp = timestamp
         self.transactions = transactions
         self.prev_block_hash = prev_block_hash
@@ -39,9 +39,30 @@ class Block:
         # this static header hash is for database retrieved block only, so that do not recalculate hash value
         self.current_block_hash = None
 
-    def get_dict(self):
+    @classmethod
+    def from_db(cls, db_block: dict):
+        """
+        Generate a Block obj from database data.
+        Args:
+            db_block: database block data.
+
+        Returns:
+            new Block obj.
+        """
+        pub_key = elgamal.PublicKey.from_hex_str(db_block['public_key'], db_block['difficulty'])
+        block = Block(height=db_block['height'],
+                      timestamp=db_block['timestamp'],
+                      transactions=[],
+                      public_key=pub_key,
+                      prev_block_hash=db_block['prev_block_hash'])
+        block.current_block_hash = db_block['header_hash']
+        return block
+
+    def get_db_record(self):
+        """Dump object as dict for database insertion"""
+        # TODO: store only the Tx IDs
         return {
-            "height": self.index,
+            "height": self.height,
             "timestamp": self.timestamp,
             "header_hash": self.hash_header(),
             "difficulty": self.difficulty,
@@ -49,7 +70,7 @@ class Block:
             "public_key": str(hex(self.public_key.g)) + ", " + str(
                 hex(self.public_key.h)) + ", " + str(hex(self.public_key.p)),
             "nonce": self.nonce,
-            "transactions": str(self.transactions)
+            "transactions": str([tx.__dict__ for tx in self.transactions])
         }
 
     def hash_header(self):
@@ -62,7 +83,7 @@ class Block:
             # if the static hash is not yet allocated, do it here, the hash obj cannot be serialized so the init is not
             # inside __init__
             self._static_hash = hashlib.sha256()
-            self._static_hash.update((str(self.index) + str(self.timestamp) + str(self.body_hash()) +
+            self._static_hash.update((str(self.height) + str(self.timestamp) + str(self.body_hash()) +
                                       str(self.public_key)).encode('utf-8'))
         sha1 = self._static_hash.copy()
         sha1.update(str(self.nonce).encode('utf-8'))
