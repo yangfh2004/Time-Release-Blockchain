@@ -58,7 +58,9 @@ class Block:
         block.current_block_hash = db_block['header_hash']
         return block
 
-    def get_dict(self):
+    def get_db_record(self):
+        """Dump object as dict for database insertion"""
+        # TODO: store only the Tx IDs
         return {
             "height": self.height,
             "timestamp": self.timestamp,
@@ -68,7 +70,7 @@ class Block:
             "public_key": str(hex(self.public_key.g)) + ", " + str(
                 hex(self.public_key.h)) + ", " + str(hex(self.public_key.p)),
             "nonce": self.nonce,
-            "transactions": str(self.transactions)
+            "transactions": str([tx.__dict__ for tx in self.transactions])
         }
 
     def hash_header(self):

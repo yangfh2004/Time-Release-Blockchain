@@ -37,8 +37,12 @@ def get_blocks():
 @node.route('/last', methods=['GET'])
 def get_last_block():
     last_block_idx = len(db['blockchain'])
-    last_block = db['blockchain'].find_one(id=last_block_idx)
-    return jsonify(hexlify_block(last_block))
+    if last_block_idx > 0:
+        last_block = db['blockchain'].find_one(id=last_block_idx)
+        return jsonify(hexlify_block(last_block))
+    else:
+        last_block = {"height": 0}
+        return jsonify(last_block)
 
 
 @node.route('/logs', methods=['GET'])

@@ -101,18 +101,19 @@ def send_transaction(addr_from, private_key, addr_to, amount, msg=None, lock_tim
             # prepare time release encryption
             block_res = requests.get('http://127.0.0.1:5000/last')
             block_data = block_res.json()
-            last_block = Block.from_db(block_data)
-            # after a number of block, the encrypted message will be released
-            block_interval = lock_time//BLOCK_TIME
-            future_pub_key = last_block.public_key
-            # derive future public key
-            for _ in range(block_interval):
-                future_pub_key = elgamal.generate_pub_key(seed=int(future_pub_key.p + future_pub_key.g + future_pub_key.h),
-                                                          bit_length=future_pub_key.bit_length)
-            # encrypt time release message
-            cipher = elgamal.encrypt(future_pub_key, msg)
-            data['release_block'] = last_block.height + block_interval
-            data['message'] = cipher
+            if block_data["height"] > 0:
+                last_block = Block.from_db(block_data)
+                # after a number of block, the encrypted message will be released
+                block_interval = lock_time//BLOCK_TIME
+                future_pub_key = last_block.public_key
+                # derive future public key
+                for _ in range(block_interval):
+                    future_pub_key = elgamal.generate_pub_key(seed=int(future_pub_key.p + future_pub_key.g + future_pub_key.h),
+                                                              bit_length=future_pub_key.bit_length)
+                # encrypt time release message
+                cipher = elgamal.encrypt(future_pub_key, msg)
+                data['release_block'] = last_block.height + block_interval
+                data['message'] = cipher
         res = requests.post(url, json=data, headers=headers)
         print(res.text)
     else:
