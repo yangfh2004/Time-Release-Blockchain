@@ -138,7 +138,7 @@ def mine(blockchain: list[Block],
             blockchain = updated_blockchain
             # update blockchain in the db
             for bk in blockchain:
-                database['blockchain'].update(bk.get_dict(), ['height'])
+                database['blockchain'].update(bk.get_db_record(), ['height'])
             continue
         else:
             # Once we find a valid proof of work, we know we can mine a block so
@@ -149,7 +149,8 @@ def mine(blockchain: list[Block],
             # Now create the new block
             blockchain.append(new_block)
             # insert new block to the database
-            database['blockchain'].insert(new_block.get_dict())
+            # TODO: insert transactions to database
+            database['blockchain'].insert(new_block.get_db_record())
 
 
 def find_new_chains(peer_nodes):
@@ -208,7 +209,7 @@ if __name__ == '__main__':
     if len(db['blockchain']) == 0:
         # write the genesis block if the blockchain is empty
         current_chain = [create_genesis_block()]
-        db['blockchain'].insert(current_chain[0].get_dict())
+        db['blockchain'].insert(current_chain[0].get_db_record())
     else:
         # load the whole blockchain from database
         current_chain = []
