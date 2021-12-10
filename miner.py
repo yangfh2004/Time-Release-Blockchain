@@ -1,6 +1,7 @@
 import time
 import json
 import requests
+import signal
 from typing import Optional
 import dataset
 import urllib.parse
@@ -20,6 +21,20 @@ start_time = 0
 difficulty = 32
 # mining award
 mining_reward = 100
+
+
+class TimeoutException(Exception):
+    # Custom exception class
+    print("Cannot seal a new block within block time! Try again")
+
+
+def timeout_handler(signum, frame):
+    # Custom signal handler
+    raise TimeoutException
+
+
+# Change the behavior of SIGALRM
+signal.signal(signal.SIGALRM, timeout_handler)
 
 
 def calculate_difficulty(bit_length: int):
@@ -79,7 +94,7 @@ def proof_of_work(candidate_block: Block,
 def mine(blockchain: list[Block],
          node_pending_txs: list[Tx],
          database,
-         sleep_time=0,
+         debug=False,
          difficulty_adjustable=False):
     """ Stores the transactions that this node has in a list.
     If the node you sent the transaction adds a block
@@ -94,71 +109,82 @@ def mine(blockchain: list[Block],
         In order to prevent too many coins to be created, the process
         is slowed down by a proof of work algorithm.
         """
-        # sleep to wait for new tx if for debugging
-        if sleep_time:
-            time.sleep(sleep_time)
-        # Get the last proof of work
-        last_block = blockchain[-1]
-        if difficulty_adjustable:
-            if (last_block.height + 2) % term == 2:
-                difficulty = calculate_difficulty(last_block.difficulty)
-        # use url parser to avoid url encoding error e.g. + -> space
-        req = MINER_NODE_URL + "/txion?update=" + urllib.parse.quote(MINER_ADDRESS)
-        # database['logs'].insert({'category': 'request', 'timestamp': datetime.now(), 'info': req})
-        new_txs = requests.get(req).content
-        new_txs = json.loads(new_txs)
-        # add the mining reward token as coinbase transaction
-        node_pending_txs.append(Tx.coinbase(MINER_ADDRESS, mining_reward))
-        for tx in list(new_txs):
-            node_pending_txs.append(Tx.from_dict(tx))
+        # Start the timer. Once 5 seconds are over, a SIGALRM signal is sent.
+        signal.alarm(BLOCK_TIME)
+        init_time = time.time()
+        try:
+            # Get the last proof of work
+            last_block = blockchain[-1]
+            if difficulty_adjustable:
+                if (last_block.height + 2) % term == 2:
+                    difficulty = calculate_difficulty(last_block.difficulty)
+            # use url parser to avoid url encoding error e.g. + -> space
+            req = MINER_NODE_URL + "/txion?update=" + urllib.parse.quote(MINER_ADDRESS)
+            # database['logs'].insert({'category': 'request', 'timestamp': datetime.now(), 'info': req})
+            new_txs = requests.get(req).content
+            new_txs = json.loads(new_txs)
+            # add the mining reward token as coinbase transaction
+            node_pending_txs.append(Tx.coinbase(MINER_ADDRESS, mining_reward))
+            for tx in list(new_txs):
+                node_pending_txs.append(Tx.from_dict(tx))
 
-        new_block_index = last_block.height + 1
-        new_block_timestamp = time.time()
-        # avoid to recalculate block hash if the block data is retrieved from database
-        if last_block.current_block_hash:
-            prev_block_hash = last_block.current_block_hash
-        else:
-            prev_block_hash = last_block.hash_header()
-        prev_public_key = last_block.public_key
-        # generate new public key with previous public key
-        new_public_key = elgamal.generate_pub_key(bit_length=difficulty,
-                                                  seed=int(prev_public_key.p + prev_public_key.g + prev_public_key.h))
-        candidate_block = Block(new_block_index,
-                                new_block_timestamp,
-                                node_pending_txs,
-                                new_public_key,
-                                prev_block_hash=prev_block_hash)
+            new_block_index = last_block.height + 1
+            new_block_timestamp = time.time()
+            # avoid to recalculate block hash if the block data is retrieved from database
+            if last_block.current_block_hash:
+                prev_block_hash = last_block.current_block_hash
+            else:
+                prev_block_hash = last_block.hash_header()
+            prev_public_key = last_block.public_key
+            # generate new public key with previous public key
+            new_public_key = elgamal.generate_pub_key(bit_length=difficulty,
+                                                      seed=int(
+                                                          prev_public_key.p + prev_public_key.g + prev_public_key.h))
+            candidate_block = Block(new_block_index,
+                                    new_block_timestamp,
+                                    node_pending_txs,
+                                    new_public_key,
+                                    prev_block_hash=prev_block_hash)
 
-        # Find the proof of work for the current block being mined
-        # Note: The program will hang here until a new proof of work is found
-        new_block, updated_blockchain = proof_of_work(candidate_block, blockchain, PEER_NODES)
-        # If we didn't guess the proof, start mining again
-        if new_block is None:
-            # Update blockchain and save it to file
-            blockchain = updated_blockchain
-            # update blockchain in the db
-            for bk in blockchain:
-                database['blockchain'].update(bk.get_db_record(), ['height'])
+            # Find the proof of work for the current block being mined
+            # Note: The program will hang here until a new proof of work is found
+            new_block, updated_blockchain = proof_of_work(candidate_block, blockchain, PEER_NODES)
+            # If we didn't guess the proof, start mining again
+            if new_block is None:
+                # Update blockchain and save it to file
+                blockchain = updated_blockchain
+                # update blockchain in the db
+                for bk in blockchain:
+                    database['blockchain'].update(bk.get_db_record(), ['height'])
+                continue
+            else:
+                # Once we find a valid proof of work, we know we can mine a block so
+                # ...we reward the miner by adding a transaction
+                # First we load all pending transactions sent to the node server
+                # insert transactions to database
+                db_txs = []
+                for tx in node_pending_txs:
+                    db_tx = tx.__dict__
+                    db_tx["block_height"] = new_block_index
+                    db_txs.append(db_tx)
+                database["transactions"].insert_many(db_txs)
+                res_txs = database["transactions"].find(block_height=new_block_index)
+                tx_ids = [tx["id"] for tx in res_txs]
+                # Empty transaction list
+                node_pending_txs = []
+                # Now create the new block
+                blockchain.append(new_block)
+                # insert new block to the database
+                database['blockchain'].insert(new_block.get_db_record(tx_ids=tx_ids))
+        except TimeoutException:
             continue
         else:
-            # Once we find a valid proof of work, we know we can mine a block so
-            # ...we reward the miner by adding a transaction
-            # First we load all pending transactions sent to the node server
-            # insert transactions to database
-            db_txs = []
-            for tx in node_pending_txs:
-                db_tx = tx.__dict__
-                db_tx["block_height"] = new_block_index
-                db_txs.append(db_tx)
-            database["transactions"].insert_many(db_txs)
-            res_txs = database["transactions"].find(block_height=new_block_index)
-            tx_ids = [tx["id"] for tx in res_txs]
-            # Empty transaction list
-            node_pending_txs = []
-            # Now create the new block
-            blockchain.append(new_block)
-            # insert new block to the database
-            database['blockchain'].insert(new_block.get_db_record(tx_ids=tx_ids))
+            # if finish mining within block time, sleep for debugging
+            signal.alarm(0)
+            if debug:
+                # sleep to wait for new tx if for debugging, minus 1 sec to avoid triggering alarm
+                sleep_time = BLOCK_TIME - (time.time() - init_time) - 1
+                time.sleep(sleep_time)
 
 
 def find_new_chains(peer_nodes):
@@ -238,4 +264,4 @@ if __name__ == '__main__':
     # if first time running, use the genesis block
     db = dataset.connect(BLOCKCHAIN_DB_URL)
     # Start mining
-    mine(retrieve_chain_from_db(db), [], db, sleep_time=BLOCK_TIME - 25)
+    mine(retrieve_chain_from_db(db), [], db, debug=True)
