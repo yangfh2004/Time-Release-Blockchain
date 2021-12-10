@@ -25,7 +25,7 @@ mining_reward = 100
 
 class TimeoutException(Exception):
     # Custom exception class
-    print("Cannot seal a new block within block time! Try again")
+    pass
 
 
 def timeout_handler(signum, frame):
@@ -74,14 +74,11 @@ def proof_of_work(candidate_block: Block,
     miner = PRMiner(candidate_block, block_time=BLOCK_TIME)
     nonce, solution = miner.mining()
     if nonce and solution:
-        private_key = solution.generate_private_key()
-        prime = candidate_block.public_key.p
-        expected = candidate_block.public_key.h
-        actual = elgamal.mod_exp(candidate_block.public_key.g, private_key.x, prime)
-        # test if the private key match the public key
-        if expected == actual or prime == expected + actual:
+        try:
+            solution.generate_private_key()
+            candidate_block.solution = solution
             return candidate_block, blockchain
-        else:
+        except ValueError:
             return None, blockchain
     else:
         new_blockchain = consensus(blockchain, peer_nodes)
@@ -180,11 +177,11 @@ def mine(blockchain: list[Block],
             continue
         else:
             # if finish mining within block time, sleep for debugging
-            signal.alarm(0)
             if debug:
                 # sleep to wait for new tx if for debugging, minus 1 sec to avoid triggering alarm
                 sleep_time = BLOCK_TIME - (time.time() - init_time) - 1
                 time.sleep(sleep_time)
+            signal.alarm(0)
 
 
 def find_new_chains(peer_nodes):

@@ -9,7 +9,7 @@ class TestMining(unittest.TestCase):
     def setUp(self) -> None:
         test_pubkey = elgamal.generate_pub_key(0xffffffffffff, 32)
         # generate genesis block
-        self.test_block = Block(0, time.time(), {"transactions": None}, test_pubkey)
+        self.test_block = Block(0, time.time(), [], test_pubkey)
         self.test_miner = None
         self.test_block_time = 600
 
