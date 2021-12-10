@@ -30,6 +30,12 @@ def get_blocks():
     chain_to_send = []
     for block in db['blockchain']:
         chain_to_send.append(hexlify_block(block))
+        # recover all Tx objects from db
+        tx_id_str = block['transactions']
+        if tx_id_str is not None:
+            tx_ids = [int(tx_id) for tx_id in tx_id_str.split(',')]
+            db_txs = [db_tx for db_tx in db['transactions'].find(id=tx_ids)]
+            block['transactions'] = db_txs
     return jsonify(chain_to_send)
     # Send our chain to whomever requested it
 
@@ -65,11 +71,11 @@ def transaction():
         # On each new POST request, we extract the transaction data
         new_txion = request.get_json()
         # validate the new transaction before put it on the list
-        tx_pub_key = new_txion['from']
+        tx_pub_key = new_txion['addr_from']
         tx_signature = new_txion['signature']
         tx_data = {
-            "from": new_txion['from'],
-            "to": new_txion['to'],
+            "addr_from": new_txion['addr_from'],
+            "addr_to": new_txion['addr_to'],
             "amount": new_txion['amount'],
         }
         if validate_signature(tx_pub_key, tx_signature, json.dumps(tx_data)):
@@ -78,12 +84,12 @@ def transaction():
             # Because the transaction was successfully
             # submitted, we log it to our console
             print("New transaction")
-            print("FROM: {0}".format(new_txion['from']))
-            print("TO: {0}".format(new_txion['to']))
+            print(f"FROM: {new_txion['addr_from']}")
+            print(f"TO: {new_txion['addr_to']}")
             print("AMOUNT: {0}".format(new_txion['amount']))
-            if "message" in new_txion and "release_block" in new_txion:
+            if "cipher" in new_txion and "release_block_idx" in new_txion:
                 print(f"This transaction contains cipher message "
-                      f"to be released in block {new_txion['release_block']}\n")
+                      f"to be released in block {new_txion['release_block_idx']}\n")
             # Then we let the client know it worked out
             return "Transaction submission successful\n"
         else:

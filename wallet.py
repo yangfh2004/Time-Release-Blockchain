@@ -88,8 +88,8 @@ def send_transaction(addr_from, private_key, addr_to, amount, msg=None, lock_tim
         # tx ID is omitted instead of using address to query tx data from database
         # for simplification of implementation
         # prepare tx info and signature
-        data = {"from": addr_from,
-                "to": addr_to,
+        data = {"addr_from": addr_from,
+                "addr_to": addr_to,
                 "amount": amount,
         }
         signature = sign_ecdsa_data(private_key, data)
@@ -112,8 +112,8 @@ def send_transaction(addr_from, private_key, addr_to, amount, msg=None, lock_tim
                                                               bit_length=future_pub_key.bit_length)
                 # encrypt time release message
                 cipher = elgamal.encrypt(future_pub_key, msg)
-                data['release_block'] = last_block.height + block_interval
-                data['message'] = cipher
+                data['release_block_idx'] = last_block.height + block_interval
+                data['cipher'] = cipher
         res = requests.post(url, json=data, headers=headers)
         print(res.text)
     else:

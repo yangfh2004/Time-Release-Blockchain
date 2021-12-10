@@ -115,7 +115,7 @@ class SimplePRMiner:
             else:
                 i += 1
                 continue
-        print("The mining is not successful!")
+        # failed to find the solution and nonce, return none
         return 0, None
 
 
