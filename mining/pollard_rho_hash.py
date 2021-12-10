@@ -1,27 +1,12 @@
 """
 Pollard rho based hash mining algorithm.
 """
-from blockchain.block import Block
-from crypto.elgamal import PrivateKey
-from crypto.pollard_rho import func_g, func_h, pollard_eqs_solver
 from random import randint
 from typing import Optional
 import time
-
-
-class PRSolution:
-    """Solution from pollard rho method."""
-    def __init__(self, a1, a2, b1, b2, n):
-        self.a1 = a1
-        self.a2 = a2
-        self.b1 = b1
-        self.b2 = b2
-        self.n = n
-        self.pubkey = None
-
-    def generate_private_key(self):
-        x = pollard_eqs_solver(self.a1, self.b1, self.a2, self.b2, self.n)
-        return PrivateKey(self.pubkey.p, self.pubkey.g, x, self.pubkey.bit_length)
+from blockchain.block import Block
+from crypto.pollard_rho import func_g, func_h
+from mining.pollard_rho_solution import PRSolution
 
 
 class SimplePRMiner:
@@ -116,6 +101,7 @@ class SimplePRMiner:
                 i += 1
                 continue
         # failed to find the solution and nonce, return none
+        print("Cannot seal a new block within block time! Try again")
         return 0, None
 
 

@@ -129,15 +129,19 @@ class PublicKey(object):
         self.x = None
 
     @classmethod
-    def from_hex_str(cls, key_str: str, bit_length=0):
-        """generate a public key from string"""
+    def from_hex_str(cls, key_str: str):
+        """Generate a public key from string."""
         keys = key_str.split(',')
         if len(keys) < 3:
             raise ValueError("The input string is not valid")
         p = int(keys[0], 16)
         g = int(keys[1], 16)
         h = int(keys[2], 16)
+        bit_length = int(keys[3])
         return PublicKey(p, g, h, bit_length=bit_length)
+
+    def __repr__(self):
+        return str(hex(self.g)) + ", " + str(hex(self.h)) + ", " + str(hex(self.p)) + ", " + str(self.bit_length)
 
     def __eq__(self, other):
         if self.p == other.p and self.g == other.g and self.h == other.h and self.bit_length == other.bit_length:
