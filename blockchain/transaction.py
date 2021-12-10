@@ -19,12 +19,12 @@ class Tx:
 
     @classmethod
     def from_dict(cls, tx: dict):
-        addr_from = tx["from"]
-        addr_to = tx["to"]
+        addr_from = tx["addr_from"]
+        addr_to = tx["addr_to"]
         amount = tx["amount"]
-        if "message" in tx and "release_block" in tx:
-            cipher = tx["message"]
-            release_block = tx["release_block"]
+        if "cipher" in tx and tx["cipher"] is not None and "release_block_idx" in tx and tx["release_block_idx"]:
+            cipher = tx["cipher"]
+            release_block = tx["release_block_idx"]
             return Tx(addr_from, addr_to, amount, cipher, release_block)
         else:
             return Tx(addr_from, addr_to, amount)

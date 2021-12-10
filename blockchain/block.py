@@ -58,20 +58,31 @@ class Block:
         block.current_block_hash = db_block['header_hash']
         return block
 
-    def get_db_record(self):
+    def get_db_record(self, tx_ids: list[int] = None):
         """Dump object as dict for database insertion"""
-        # TODO: store only the Tx IDs
-        return {
-            "height": self.height,
-            "timestamp": self.timestamp,
-            "header_hash": self.hash_header(),
-            "difficulty": self.difficulty,
-            "prev_block_hash": self.prev_block_hash,
-            "public_key": str(hex(self.public_key.g)) + ", " + str(
-                hex(self.public_key.h)) + ", " + str(hex(self.public_key.p)),
-            "nonce": self.nonce,
-            "transactions": str([tx.__dict__ for tx in self.transactions])
-        }
+        if tx_ids:
+            return {
+                "height": self.height,
+                "timestamp": self.timestamp,
+                "header_hash": self.hash_header(),
+                "difficulty": self.difficulty,
+                "prev_block_hash": self.prev_block_hash,
+                "public_key": str(hex(self.public_key.g)) + ", " + str(
+                    hex(self.public_key.h)) + ", " + str(hex(self.public_key.p)),
+                "nonce": self.nonce,
+                "transactions": ", ".join(str(tx_id) for tx_id in tx_ids)
+            }
+        else:
+            return {
+                "height": self.height,
+                "timestamp": self.timestamp,
+                "header_hash": self.hash_header(),
+                "difficulty": self.difficulty,
+                "prev_block_hash": self.prev_block_hash,
+                "public_key": str(hex(self.public_key.g)) + ", " + str(
+                    hex(self.public_key.h)) + ", " + str(hex(self.public_key.p)),
+                "nonce": self.nonce
+            }
 
     def hash_header(self):
         """Double hash of the block header

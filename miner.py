@@ -144,13 +144,21 @@ def mine(blockchain: list[Block],
             # Once we find a valid proof of work, we know we can mine a block so
             # ...we reward the miner by adding a transaction
             # First we load all pending transactions sent to the node server
+            # insert transactions to database
+            db_txs = []
+            for tx in node_pending_txs:
+                db_tx = tx.__dict__
+                db_tx["block_height"] = new_block_index
+                db_txs.append(db_tx)
+            database["transactions"].insert_many(db_txs)
+            res_txs = database["transactions"].find(block_height=new_block_index)
+            tx_ids = [tx["id"] for tx in res_txs]
             # Empty transaction list
             node_pending_txs = []
             # Now create the new block
             blockchain.append(new_block)
             # insert new block to the database
-            # TODO: insert transactions to database
-            database['blockchain'].insert(new_block.get_db_record())
+            database['blockchain'].insert(new_block.get_db_record(tx_ids=tx_ids))
 
 
 def find_new_chains(peer_nodes):
@@ -202,19 +210,32 @@ def welcome_msg():
         a parallel chain.\n\n\n""")
 
 
+def retrieve_chain_from_db(database):
+    if len(database['blockchain']) == 0:
+        # write the genesis block if the blockchain is empty
+        current_chain = [create_genesis_block()]
+        database['blockchain'].insert(current_chain[0].get_db_record())
+    else:
+        # load the whole blockchain from database
+        current_chain = []
+        for db_block in database['blockchain']:
+            current_block = Block.from_db(db_block)
+            # recover all Tx objects from db
+            tx_id_str = db_block['transactions']
+            if tx_id_str is not None and tx_id_str != "[]":
+                tx_ids = [int(tx_id) for tx_id in tx_id_str.split(',')]
+                db_txs = database['transactions'].find(id=tx_ids)
+                txs = []
+                for db_tx in db_txs:
+                    txs.append(Tx.from_dict(db_tx))
+                current_block.transactions = txs
+            current_chain.append(current_block)
+    return current_chain
+
+
 if __name__ == '__main__':
     welcome_msg()
     # if first time running, use the genesis block
     db = dataset.connect(BLOCKCHAIN_DB_URL)
-    if len(db['blockchain']) == 0:
-        # write the genesis block if the blockchain is empty
-        current_chain = [create_genesis_block()]
-        db['blockchain'].insert(current_chain[0].get_db_record())
-    else:
-        # load the whole blockchain from database
-        current_chain = []
-        for db_block in db['blockchain']:
-            current_chain.append(Block.from_db(db_block))
-
     # Start mining
-    mine(current_chain, [], db, sleep_time=BLOCK_TIME-25)
+    mine(retrieve_chain_from_db(db), [], db, sleep_time=BLOCK_TIME - 25)
