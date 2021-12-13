@@ -15,7 +15,7 @@ from dotenv import load_dotenv
 
 load_dotenv()  # take environment variables from .env.
 MINER_ADDRESS = environ.get("MINER_ADDRESS")
-MINER_NODE_URL = environ.get("MINER_NODE_URL")
+MINER_NODE_URL = environ.get("MINER_NODE") + ':' + environ.get("MINER_PORT")
 PEER_NODES = environ.get("PEER_NODES")
 
 # constant time in seconds that determine how soon the new block will be generated

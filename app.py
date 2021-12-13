@@ -1,10 +1,16 @@
 import json
+import time
+import miner
+from multiprocessing import Process
 from flask import Flask, request, jsonify
 from os import environ
 import dataset
 from binascii import hexlify
 from miner_config import BLOCKCHAIN_DB_URL
 from crypto.tx_sign import validate_signature
+from dotenv import load_dotenv
+# load env var from .env
+load_dotenv()
 node = Flask(__name__)
 """ Stores the transactions that this node has in a list.
 If the node you sent the transaction adds a block
@@ -22,6 +28,11 @@ def hexlify_block(db_block: dict):
         db_block['prev_block_hash'] = hexlify(db_block['prev_block_hash']).decode('ascii')
     db_block['header_hash'] = hexlify(db_block['header_hash']).decode('ascii')
     return db_block
+
+
+@node.route("/")
+def index():
+    return "<h1>NexToken Time Release Blockchain System</h1>"
 
 
 @node.route('/blocks', methods=['GET'])
@@ -100,3 +111,20 @@ def transaction():
         # Empty transaction list
         NODE_PENDING_TRANSACTIONS[:] = []
         return pending
+
+
+if __name__ == '__main__':
+    # THIS PART OF CODE SHALL ONLY RUN IN DEPLOYMENT AS PYTHON SCRIPT DIRECTLY
+    # DO NOT RUN THE MAIN FUNCTION IF YOU ARE UNDER DEVELOPMENT/DEBUGGING MODE
+    # load port from .env
+    # TODO: need a deployment test
+    port = environ.get("MINER_PORT")
+    from waitress import serve
+    p1 = Process(target=serve, args=(node,), kwargs={"port": port})
+    p1.run()
+    # run miner after setup the node
+    # wait 5 sec until the server fully setup
+    time.sleep(5)
+    miner.welcome_msg()
+    p2 = Process(target=miner.mine, args=(miner.retrieve_chain_from_db(db), [], db, True))
+    p2.run()

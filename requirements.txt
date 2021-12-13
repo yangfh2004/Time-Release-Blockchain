@@ -14,3 +14,4 @@ Werkzeug==2.0.1
 pycryptodome==3.10.4
 dataset~=1.5.1
 python-dotenv~=0.19.2
+waitress~=2.0.0

@@ -27,7 +27,7 @@ from miner import BLOCK_TIME
 from dotenv import load_dotenv
 
 load_dotenv()  # take environment variables from .env.
-MINER_NODE_URL = environ.get("MINER_NODE_URL")
+MINER_NODE_URL = environ.get("MINER_NODE") + ':' + environ.get("MINER_PORT")
 
 
 def wallet():
