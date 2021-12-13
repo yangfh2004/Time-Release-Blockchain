@@ -2,6 +2,7 @@ import time
 import json
 import requests
 import signal
+from os import environ
 from typing import Optional
 import dataset
 import urllib.parse
@@ -9,7 +10,13 @@ from crypto import elgamal
 from mining.pollard_rho_hash import PRMiner
 from blockchain.block import Block, create_genesis_block
 from blockchain.transaction import Tx
-from miner_config import MINER_ADDRESS, MINER_NODE_URL, PEER_NODES, BLOCKCHAIN_DB_URL
+from miner_config import BLOCKCHAIN_DB_URL
+from dotenv import load_dotenv
+
+load_dotenv()  # take environment variables from .env.
+MINER_ADDRESS = environ.get("MINER_ADDRESS")
+MINER_NODE_URL = environ.get("MINER_NODE_URL")
+PEER_NODES = environ.get("PEER_NODES")
 
 # constant time in seconds that determine how soon the new block will be generated
 BLOCK_TIME = 30
