@@ -20,9 +20,14 @@ node_pending_transactions list to avoid it get processed more than 1 time.
 
 import requests
 import crypto.elgamal as elgamal
+from os import environ
 from blockchain.block import Block
 from crypto.tx_sign import generate_ecdsa_keys, sign_ecdsa_data
 from miner import BLOCK_TIME
+from dotenv import load_dotenv
+
+load_dotenv()  # take environment variables from .env.
+MINER_NODE_URL = environ.get("MINER_NODE") + ':' + environ.get("MINER_PORT")
 
 
 def wallet():
@@ -93,13 +98,14 @@ def send_transaction(addr_from, private_key, addr_to, amount, msg=None, lock_tim
                 "amount": amount,
         }
         signature = sign_ecdsa_data(private_key, data)
-        url = 'http://127.0.0.1:5000/txion'
+        url = MINER_NODE_URL + '/txion'
         # decode signature bytes into utf-8 string
         data["signature"] = signature.decode()
         headers = {"Content-Type": "application/json"}
         if msg and lock_time > 0:
             # prepare time release encryption
-            block_res = requests.get('http://127.0.0.1:5000/last')
+            last_url = MINER_NODE_URL + '/last'
+            block_res = requests.get(last_url)
             block_data = block_res.json()
             if block_data["height"] > 0:
                 last_block = Block.from_db(block_data)
@@ -124,13 +130,15 @@ def check_transactions():
     """Retrieve the entire blockchain. With this you can check your
     wallets balance. If the blockchain is to long, it may take some time to load.
     """
-    res = requests.get('http://127.0.0.1:5000/blocks')
+    blocks_url = MINER_NODE_URL + '/blocks'
+    res = requests.get(blocks_url)
     print(res.text)
 
 
 def check_logs():
     """Get the status logs from the miner."""
-    res = requests.get('http://127.0.0.1:5000/logs')
+    logs_url = MINER_NODE_URL + '/logs'
+    res = requests.get(logs_url)
     print(res.text)
 
 
