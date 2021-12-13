@@ -100,8 +100,3 @@ def transaction():
         # Empty transaction list
         NODE_PENDING_TRANSACTIONS[:] = []
         return pending
-
-
-if __name__ == '__main__':
-    # Start server to receive transactions
-    node.run()
