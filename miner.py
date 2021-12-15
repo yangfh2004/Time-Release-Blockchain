@@ -168,9 +168,11 @@ def mine(blockchain: list[Block],
                 # insert transactions to database
                 db_txs = []
                 for tx in node_pending_txs:
-                    db_tx = tx.__dict__
-                    db_tx["block_height"] = new_block_index
-                    db_txs.append(db_tx)
+                    # the tx signature has been verified by app, here need to validate the amount
+                    if tx.addr_from == "network" or validate_transaction(database, tx):
+                        db_tx = tx.__dict__
+                        db_tx["block_height"] = new_block_index
+                        db_txs.append(db_tx)
                 database["transactions"].insert_many(db_txs)
                 res_txs = database["transactions"].find(block_height=new_block_index)
                 tx_ids = [tx["id"] for tx in res_txs]
@@ -229,6 +231,24 @@ def validate_blockchain(blockchain: list[Block]):
     """TODO: Validate the submitted chain. If hashes are not correct"""
     print(blockchain)
     return True
+
+
+def validate_transaction(database, tx: Tx):
+    if tx.addr_from == "network":
+        return True
+    in_sum = 0
+    # sum all txs inbound to this address
+    for db_tx in database['transactions'].find(addr_to=tx.addr_from):
+        in_sum += db_tx['amount']
+    # sum all txs outbound from this address
+    out_sum = 0
+    for db_tx in database['transactions'].find(addr_from=tx.addr_from):
+        out_sum += db_tx['amount']
+    balance = in_sum - out_sum
+    if tx.amount <= balance:
+        return True
+    else:
+        return False
 
 
 def welcome_msg():

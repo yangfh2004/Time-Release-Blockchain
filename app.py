@@ -1,7 +1,5 @@
 import json
 import time
-import miner
-from multiprocessing import Process
 from flask import Flask, request, jsonify
 from os import environ
 import dataset
@@ -118,6 +116,9 @@ if __name__ == '__main__':
     # DO NOT RUN THE MAIN FUNCTION IF YOU ARE UNDER DEVELOPMENT/DEBUGGING MODE
     # load port from .env
     # TODO: need a deployment test
+    # Note: Miner is not working with 'flask run' due to a bug in Flask SocketIO
+    import miner
+    from multiprocessing import Process
     port = environ.get("MINER_PORT")
     from waitress import serve
     p1 = Process(target=serve, args=(node,), kwargs={"port": port})
