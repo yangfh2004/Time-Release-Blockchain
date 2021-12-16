@@ -264,14 +264,10 @@ def generate_pub_key(seed: int, bit_length: int, i_confidence=32) -> PublicKey:
 
     p = find_prime(bit_length, i_confidence, seed)
     g = find_primitive_root(p, seed)
-    # h = mod_exp(g, 2, p)
-    # x = random.randint( 1, p - 1)
-    # h = mod_exp(g,x,p)
     random.seed(seed)
     h = random.randint(1, p - 1)
 
     public_key = PublicKey(p, g, h, bit_length)
-    # privateKey = PrivateKey(p, g, x, iNumBits)
 
     return public_key
 

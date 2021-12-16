@@ -2,7 +2,7 @@
 Source: Handbook of Applied Cryptography chapter-3
         http://cacr.uwaterloo.ca/hac/about/chap3.pdf
 """
-from Crypto.Util.number import *
+from Crypto.Util.number import GCD, inverse
 from random import randint
 
 
