@@ -87,7 +87,7 @@ def transaction():
             "addr_to": new_txion['addr_to'],
             "amount": new_txion['amount'],
         }
-        if validate_signature(tx_pub_key, tx_signature, json.dumps(tx_data)):
+        if validate_signature(tx_pub_key, tx_signature, json.dumps(tx_data)) and validate_transaction(db, tx_data):
             # Then we add the transaction to our list
             NODE_PENDING_TRANSACTIONS.append(new_txion)
             # Because the transaction was successfully
@@ -109,6 +109,22 @@ def transaction():
         # Empty transaction list
         NODE_PENDING_TRANSACTIONS[:] = []
         return pending
+
+
+def validate_transaction(database, tx: dict):
+    in_sum = 0
+    # sum all txs inbound to this address
+    for db_tx in database['transactions'].find(addr_to=tx["addr_from"]):
+        in_sum += db_tx['amount']
+    # sum all txs outbound from this address
+    out_sum = 0
+    for db_tx in database['transactions'].find(addr_from=tx["addr_from"]):
+        out_sum += db_tx['amount']
+    balance = in_sum - out_sum
+    if tx["amount"] <= balance:
+        return True
+    else:
+        return False
 
 
 if __name__ == '__main__':

@@ -135,6 +135,8 @@ def mine(blockchain: list[Block],
             new_block_index = last_block.height + 1
             new_block_timestamp = time.time()
             # avoid to recalculate block hash if the block data is retrieved from database
+            # WARNING: this part of code is insecure and it is not based on original design but only for
+            # simplification of code.
             if last_block.current_block_hash:
                 prev_block_hash = last_block.current_block_hash
             else:
@@ -169,10 +171,9 @@ def mine(blockchain: list[Block],
                 db_txs = []
                 for tx in node_pending_txs:
                     # the tx signature has been verified by app, here need to validate the amount
-                    if tx.addr_from == "network" or validate_transaction(database, tx):
-                        db_tx = tx.__dict__
-                        db_tx["block_height"] = new_block_index
-                        db_txs.append(db_tx)
+                    db_tx = tx.__dict__
+                    db_tx["block_height"] = new_block_index
+                    db_txs.append(db_tx)
                 database["transactions"].insert_many(db_txs)
                 res_txs = database["transactions"].find(block_height=new_block_index)
                 tx_ids = [tx["id"] for tx in res_txs]
@@ -180,6 +181,9 @@ def mine(blockchain: list[Block],
                 node_pending_txs = []
                 # Now create the new block
                 blockchain.append(new_block)
+                if debug:
+                    if validate_blockchain(blockchain):
+                        print("Newly mined block is valid!")
                 # insert new block to the database
                 database['blockchain'].insert(new_block.get_db_record(tx_ids=tx_ids))
         except TimeoutException:
@@ -228,27 +232,30 @@ def consensus(blockchain, peer_nodes) -> Optional[list[Block]]:
 
 
 def validate_blockchain(blockchain: list[Block]):
-    """TODO: Validate the submitted chain. If hashes are not correct"""
-    print(blockchain)
-    return True
-
-
-def validate_transaction(database, tx: Tx):
-    if tx.addr_from == "network":
+    if len(blockchain) < 2:
+        # no need to validate if only contains genesis block
         return True
-    in_sum = 0
-    # sum all txs inbound to this address
-    for db_tx in database['transactions'].find(addr_to=tx.addr_from):
-        in_sum += db_tx['amount']
-    # sum all txs outbound from this address
-    out_sum = 0
-    for db_tx in database['transactions'].find(addr_from=tx.addr_from):
-        out_sum += db_tx['amount']
-    balance = in_sum - out_sum
-    if tx.amount <= balance:
-        return True
-    else:
+    last_block = blockchain[-2]
+    new_block = blockchain[-1]
+    if new_block.prev_block_hash != last_block.current_block_hash:
+        # the recent blocks are not chained
         return False
+    v_miner = PRMiner(new_block)
+    v_pub_key = new_block.public_key
+    v_solution = new_block.solution
+    # test value is g^a & h^b
+    test_val_1 = pow(v_pub_key.g, v_solution.a1, v_pub_key.p) * \
+        pow(v_pub_key.h, v_solution.b1, v_pub_key.p) % v_pub_key.p
+    test_val_2 = pow(v_pub_key.g, v_solution.a2, v_pub_key.p) * \
+        pow(v_pub_key.h, v_solution.b2, v_pub_key.p) % v_pub_key.p
+    if test_val_1 != test_val_2:
+        return False
+    # validate nonce value to match the solution
+    header_hash = v_miner.header_hash(new_block.nonce)
+    f_value = v_miner.func_f(header_hash, new_block.nonce)
+    if f_value != test_val_1 or f_value != test_val_2:
+        return False
+    return True
 
 
 def welcome_msg():

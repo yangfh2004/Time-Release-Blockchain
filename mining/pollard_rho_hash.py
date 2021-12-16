@@ -17,7 +17,11 @@ class SimplePRMiner:
 
     def header_hash(self, nonce: int) -> int:
         self.block.nonce = nonce
-        hash_val = int.from_bytes(self.block.hash_header(), byteorder='little', signed=True) % self.block.public_key.p
+        # if the block is restored from database or json, the full Tx info may missing
+        # WARNING: this part of code is insecure and it is not based on original design but only for
+        # simplification of code.
+        header_hash = self.block.current_block_hash if self.block.current_block_hash else self.block.hash_header()
+        hash_val = int.from_bytes(header_hash, byteorder='little', signed=True) % self.block.public_key.p
         return hash_val
 
     def func_f(self, hash_i, y_i):
