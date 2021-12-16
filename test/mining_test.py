@@ -16,15 +16,19 @@ class TestMining(unittest.TestCase):
     def _block_mining(self):
         nonce, solution = self.test_miner.mining()
         private_key = solution.generate_private_key()
+        generator = self.test_block.public_key.g
         prime = self.test_block.public_key.p
         expected = self.test_block.public_key.h
-        actual = elgamal.mod_exp(self.test_block.public_key.g, private_key.x, prime)
+        actual = elgamal.mod_exp(generator, private_key.x, prime)
+        # test if g is the generator of the group
+        # for i in range(1, solution.n - 1):
+        #     if pow(generator, i, solution.n) == 1:
+        #         print(f"Generator {generator} is a group of {i} for h = {expected} and p = {prime}")
+        #         break
         # print("Expected = ", expected)
         # print("Actual = ", actual)
         # print("Prime = ", prime)
-        # TODO: with certain seeds, the found private keys does not match the public key but meet following equation
-        # h + pow(g, private_key, p) = p, the root cause of this problem is not yet clear,
-        self.assertTrue(expected == actual or prime == expected + actual)
+        self.assertTrue(expected == actual)
         self.test_block.public_key = elgamal.generate_pub_key(seed=int(self.test_block.public_key.p +
                                                                        self.test_block.public_key.g +
                                                                        self.test_block.public_key.h),
