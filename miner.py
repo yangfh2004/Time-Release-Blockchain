@@ -135,6 +135,8 @@ def mine(blockchain: list[Block],
             new_block_index = last_block.height + 1
             new_block_timestamp = time.time()
             # avoid to recalculate block hash if the block data is retrieved from database
+            # WARNING: this part of code is insecure and it is not based on original design but only for
+            # simplification of code.
             if last_block.current_block_hash:
                 prev_block_hash = last_block.current_block_hash
             else:
@@ -168,6 +170,7 @@ def mine(blockchain: list[Block],
                 # insert transactions to database
                 db_txs = []
                 for tx in node_pending_txs:
+                    # the tx signature has been verified by app, here need to validate the amount
                     db_tx = tx.__dict__
                     db_tx["block_height"] = new_block_index
                     db_txs.append(db_tx)
@@ -178,6 +181,9 @@ def mine(blockchain: list[Block],
                 node_pending_txs = []
                 # Now create the new block
                 blockchain.append(new_block)
+                if debug:
+                    if validate_blockchain(blockchain):
+                        print("Newly mined block is valid!")
                 # insert new block to the database
                 database['blockchain'].insert(new_block.get_db_record(tx_ids=tx_ids))
         except TimeoutException:
@@ -226,8 +232,29 @@ def consensus(blockchain, peer_nodes) -> Optional[list[Block]]:
 
 
 def validate_blockchain(blockchain: list[Block]):
-    """TODO: Validate the submitted chain. If hashes are not correct"""
-    print(blockchain)
+    if len(blockchain) < 2:
+        # no need to validate if only contains genesis block
+        return True
+    last_block = blockchain[-2]
+    new_block = blockchain[-1]
+    if new_block.prev_block_hash != last_block.current_block_hash:
+        # the recent blocks are not chained
+        return False
+    v_miner = PRMiner(new_block)
+    v_pub_key = new_block.public_key
+    v_solution = new_block.solution
+    # test value is g^a & h^b
+    test_val_1 = pow(v_pub_key.g, v_solution.a1, v_pub_key.p) * \
+        pow(v_pub_key.h, v_solution.b1, v_pub_key.p) % v_pub_key.p
+    test_val_2 = pow(v_pub_key.g, v_solution.a2, v_pub_key.p) * \
+        pow(v_pub_key.h, v_solution.b2, v_pub_key.p) % v_pub_key.p
+    if test_val_1 != test_val_2:
+        return False
+    # validate nonce value to match the solution
+    header_hash = v_miner.header_hash(new_block.nonce)
+    f_value = v_miner.func_f(header_hash, new_block.nonce)
+    if f_value != test_val_1 or f_value != test_val_2:
+        return False
     return True
 
 

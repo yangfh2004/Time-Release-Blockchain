@@ -41,6 +41,7 @@ class Block:
         # the static hash is the sha256 object to calculate header hash with different nonce without reallocation
         self._static_hash = None
         # this static header hash is for database retrieved block only, so that do not recalculate hash value
+        # TODO: fix hash_header replication issue so that the header hash could be recalculated
         self.current_block_hash = None
 
     @classmethod
@@ -61,6 +62,8 @@ class Block:
                       prev_block_hash=db_block['prev_block_hash'])
         if db_block["solution"]:
             block.solution = PRSolution.from_str(db_block['solution'])
+        # WARNING: this part of code is insecure and it is not based on original design but only for
+        # simplification of code.
         block.current_block_hash = db_block['header_hash']
         return block
 
