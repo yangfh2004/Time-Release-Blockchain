@@ -1,6 +1,6 @@
 import json
 import time
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, make_response
 from os import environ
 import dataset
 from binascii import hexlify
@@ -69,6 +69,14 @@ def get_logs():
     return json.dumps(logs)
 
 
+def tx_res_text(sig_valid: bool, tx_valid: bool):
+    if sig_valid and tx_valid:
+        return "Transaction submission successful\n"
+    if not sig_valid:
+        return "Transaction submission failed. Wrong signature\n"
+    return "Transaction submission failed. Balance not enough\n"
+
+
 @node.route('/txion', methods=['GET', 'POST'])
 def transaction():
     """Each transaction sent to this node gets validated and submitted.
@@ -87,7 +95,10 @@ def transaction():
             "addr_to": new_txion['addr_to'],
             "amount": new_txion['amount'],
         }
-        if validate_signature(tx_pub_key, tx_signature, json.dumps(tx_data)) and validate_transaction(db, tx_data):
+        tx_json = json.dumps(tx_data, separators=(',', ':'))
+        sig_validation = validate_signature(tx_pub_key, tx_signature, tx_json)
+        tx_validation = validate_transaction(db, tx_data)
+        if sig_validation and tx_validation:
             # Then we add the transaction to our list
             NODE_PENDING_TRANSACTIONS.append(new_txion)
             # Because the transaction was successfully
@@ -100,9 +111,9 @@ def transaction():
                 print(f"This transaction contains cipher message "
                       f"to be released in block {new_txion['release_block_idx']}\n")
             # Then we let the client know it worked out
-            return "Transaction submission successful\n"
-        else:
-            return "Transaction submission failed. Wrong signature\n"
+        response = make_response(tx_res_text(sig_validation, tx_validation), 200)
+        response.mimetype = "text/plain"
+        return response
     # Send pending transactions to the mining process
     elif request.method == 'GET' and request.args.get("update") == miner_address:
         pending = json.dumps(NODE_PENDING_TRANSACTIONS)
@@ -121,7 +132,8 @@ def validate_transaction(database, tx: dict):
     for db_tx in database['transactions'].find(addr_from=tx["addr_from"]):
         out_sum += db_tx['amount']
     balance = in_sum - out_sum
-    if tx["amount"] <= balance:
+    tx_amount = int(tx["amount"])
+    if tx_amount <= balance:
         return True
     else:
         return False

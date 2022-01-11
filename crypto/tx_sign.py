@@ -1,6 +1,6 @@
 import ecdsa
 import base64
-import json
+from hashlib import sha256
 
 
 def generate_ecdsa_keys():
@@ -11,7 +11,7 @@ def generate_ecdsa_keys():
     private_key: str
     public_ley: base64 (to make it shorter)
     """
-    sk = ecdsa.SigningKey.generate(curve=ecdsa.SECP256k1)  # this is your sign (private key)
+    sk = ecdsa.SigningKey.generate(curve=ecdsa.SECP256k1, hashfunc=sha256)  # this is your sign (private key)
     private_key = sk.to_string().hex()  # convert your private key to hex
     vk = sk.get_verifying_key()  # this is your verification key (public key)
     public_key = vk.to_string().hex()
@@ -24,33 +24,32 @@ def generate_ecdsa_keys():
     print(F"Your new address and private key are now in the file {filename}")
 
 
-def sign_ecdsa_data(private_key, data: dict):
+def sign_ecdsa_data(private_key, message: str):
     """
     Sign the data to be sent
 
     Args:
-        data: tx data to be signed with private key
+        message: tx message string to be signed with private key
         private_key: must be hex
 
     return
         signature: base64 (to make it shorter)
     """
     # Get timestamp, round it, make it into a string and encode it to bytes
-    data_str = json.dumps(data)
-    binary_data = data_str.encode()
-    sk = ecdsa.SigningKey.from_string(bytes.fromhex(private_key), curve=ecdsa.SECP256k1)
+    binary_data = message.encode()
+    sk = ecdsa.SigningKey.from_string(bytes.fromhex(private_key), curve=ecdsa.SECP256k1, hashfunc=sha256)
     signature = base64.b64encode(sk.sign(binary_data))
     return signature
 
 
-def validate_signature(public_key, signature, message):
+def validate_signature(public_key, signature, message: str):
     """Verifies if the signature is correct. This is used to prove
     it's you (and not someone else) trying to do a transaction with your
     address. Called when a user tries to submit a new transaction.
     """
     public_key = (base64.b64decode(public_key)).hex()
     signature = base64.b64decode(signature)
-    vk = ecdsa.VerifyingKey.from_string(bytes.fromhex(public_key), curve=ecdsa.SECP256k1)
+    vk = ecdsa.VerifyingKey.from_string(bytes.fromhex(public_key), curve=ecdsa.SECP256k1, hashfunc=sha256)
     # Try changing into an if/else statement as except is too broad.
     try:
         return vk.verify(signature, message.encode())
