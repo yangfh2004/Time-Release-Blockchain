@@ -18,6 +18,7 @@ transaction with same timestamp was added, they should remove it from the
 node_pending_transactions list to avoid it get processed more than 1 time.
 """
 
+import json
 import requests
 import crypto.elgamal as elgamal
 from os import environ
@@ -97,7 +98,8 @@ def send_transaction(addr_from, private_key, addr_to, amount, msg=None, lock_tim
                 "addr_to": addr_to,
                 "amount": amount,
         }
-        signature = sign_ecdsa_data(private_key, data)
+        tx_json = json.dumps(data, separators=(',', ':'))
+        signature = sign_ecdsa_data(private_key, tx_json)
         url = MINER_NODE_URL + '/txion'
         # decode signature bytes into utf-8 string
         data["signature"] = signature.decode()

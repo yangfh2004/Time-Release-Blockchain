@@ -1,9 +1,9 @@
 from wallet import send_transaction
 
 if __name__ == '__main__':
-    addr_from = "uWiVRoaGGKjH/WUcDyumsv05g0Y/o2qa1so9vcBMhm1cKwVJlefQ5O45SBEjykJSjwv1NV/qB6I0dnHR+ciF2Q=="
-    addr_to = "uWiVRoaGGKjH/WUcDyumsv05g0Y/o2qa1so9vcBMhm1cKwVJlefQ5O45SBEjykJSjwv1NV/qB6I0dnHR+ciF2Q=="
-    tx_private_key = "54aa2dbfed1ccf4d8377501a0b26e23b703300397a3f13f4895fc08311fefc73"
+    addr_from = "2NFbCmn8O7stZ8cJTo8rKXGCs8ZaIry1eBZk5XAzI6w0KorYSAQV1Hi20C8Sa6/3vfwY7gq4ZBdfHUWHfqZDcA=="
+    addr_to = "2NFbCmn8O7stZ8cJTo8rKXGCs8ZaIry1eBZk5XAzI6w0KorYSAQV1Hi20C8Sa6/3vfwY7gq4ZBdfHUWHfqZDcA=="
+    tx_private_key = "6ab791fa693fd54066f88de0e794fc660e7b243155b4bcbde5aaf16844941589"
     message = "I have a secret"
     lock_time = 120
     send_transaction(addr_from, tx_private_key, addr_to, 1, message, lock_time)
