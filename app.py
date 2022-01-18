@@ -35,17 +35,35 @@ def index():
 
 @node.route('/blocks', methods=['GET'])
 def get_blocks():
+    """
+    Get blocks with 'start' and 'end' height index.
+    Note: the upper limit index is exclusive and lower one is inclusive.
+    e.g. if want to get blocks [0, 1, 2] use parameters {start: 0, end: 3}
+
+    Returns:
+        blockchain in json format
+    """
+
+    args = request.args
+    start = args.get("start", type=int)
+    end = args.get("end", type=int)
     # Converts our blocks into dictionaries so we can send them as json objects later
     chain_to_send = []
-    for block in db['blockchain']:
-        chain_to_send.append(hexlify_block(block))
-        # recover all Tx objects from db
-        tx_id_str = block['transactions']
-        if tx_id_str is not None:
-            tx_ids = [int(tx_id) for tx_id in tx_id_str.split(',')]
-            db_txs = [db_tx for db_tx in db['transactions'].find(id=tx_ids)]
-            block['transactions'] = db_txs
-    return jsonify(chain_to_send)
+    if start is None or end is None or start >= end:
+        # index is not valid return empty chain
+        return jsonify(chain_to_send)
+    else:
+        for block in db['blockchain']:
+            # Note: height = block_id - 1
+            if start < block['id'] <= end:
+                chain_to_send.append(hexlify_block(block))
+                # recover all Tx objects from db
+                tx_id_str = block['transactions']
+                if tx_id_str is not None:
+                    tx_ids = [int(tx_id) for tx_id in tx_id_str.split(',')]
+                    db_txs = [db_tx for db_tx in db['transactions'].find(id=tx_ids)]
+                    block['transactions'] = db_txs
+        return jsonify(chain_to_send)
     # Send our chain to whomever requested it
 
 
