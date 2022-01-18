@@ -66,7 +66,9 @@ def wallet():
                     print(f"{lock_time} is not a valid input for time release encryption.")
 
         elif response == "3":
-            check_transactions()
+            start = input("The start index of block: (inclusive)\n")
+            end = input("The end index of block: (exclusive)\n")
+            check_transactions(int(start), int(end))
         elif response == "4":
             check_logs()
 
@@ -128,12 +130,12 @@ def send_transaction(addr_from, private_key, addr_to, amount, msg=None, lock_tim
         print("Wrong address or key length! Verify and try again.")
 
 
-def check_transactions():
+def check_transactions(start: int, end: int):
     """Retrieve the entire blockchain. With this you can check your
     wallets balance. If the blockchain is to long, it may take some time to load.
     """
     blocks_url = MINER_NODE_URL + '/blocks'
-    res = requests.get(blocks_url)
+    res = requests.get(blocks_url, params={"start": start, "end": end})
     print(res.text)
 
 
