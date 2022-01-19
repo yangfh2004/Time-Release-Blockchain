@@ -26,6 +26,7 @@ from blockchain.block import Block
 from crypto.tx_sign import generate_ecdsa_keys, sign_ecdsa_data
 from miner import BLOCK_TIME
 from dotenv import load_dotenv
+from typing import Optional
 
 load_dotenv()  # take environment variables from .env.
 MINER_NODE_URL = environ.get("MINER_NODE") + ':' + environ.get("MINER_PORT")
@@ -68,7 +69,9 @@ def wallet():
         elif response == "3":
             start = input("The start index of block: (inclusive)\n")
             end = input("The end index of block: (exclusive)\n")
-            check_transactions(int(start), int(end))
+            start = int(start) if len(start) > 0 else None
+            end = int(end) if len(end) > 0 else None
+            check_transactions(start, end)
         elif response == "4":
             check_logs()
 
@@ -130,12 +133,17 @@ def send_transaction(addr_from, private_key, addr_to, amount, msg=None, lock_tim
         print("Wrong address or key length! Verify and try again.")
 
 
-def check_transactions(start: int, end: int):
+def check_transactions(start: Optional[int] = None, end: Optional[int] = None):
     """Retrieve the entire blockchain. With this you can check your
     wallets balance. If the blockchain is to long, it may take some time to load.
     """
     blocks_url = MINER_NODE_URL + '/blocks'
-    res = requests.get(blocks_url, params={"start": start, "end": end})
+    params = {}
+    if start:
+        params["start"] = start
+    if end:
+        params["end"] = end
+    res = requests.get(blocks_url, params=params)
     print(res.text)
 
 

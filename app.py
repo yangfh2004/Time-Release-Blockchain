@@ -36,9 +36,12 @@ def index():
 @node.route('/blocks', methods=['GET'])
 def get_blocks():
     """
-    Get blocks with 'start' and 'end' height index.
+    Get blocks with 'start' and 'end' height index (NOT id IN SQLITE DB!).
     Note: the upper limit index is exclusive and lower one is inclusive.
-    e.g. if want to get blocks [0, 1, 2] use parameters {start: 0, end: 3}
+    e.g. if want to get blocks with heights [0, 1, 2] use parameters {start: 0, end: 3}
+    if 'start' index is not provided, the default start height is 0.
+    if 'end' index is not provided, the default end height is the max height
+    if none of them is provided, the full blockchain will be sent.
 
     Returns:
         blockchain in json format
@@ -49,21 +52,22 @@ def get_blocks():
     end = args.get("end", type=int)
     # Converts our blocks into dictionaries so we can send them as json objects later
     chain_to_send = []
-    if start is None or end is None or start >= end:
+    if start is None:
         # index is not valid return empty chain
-        return jsonify(chain_to_send)
-    else:
-        for block in db['blockchain']:
+        start = 0
+    if end is None:
+        end = len(db['blockchain'])
+    if start < end:
+        for block in db['blockchain'].find(id={'between': [start+1, end]}):
             # Note: height = block_id - 1
-            if start < block['id'] <= end:
-                chain_to_send.append(hexlify_block(block))
-                # recover all Tx objects from db
-                tx_id_str = block['transactions']
-                if tx_id_str is not None:
-                    tx_ids = [int(tx_id) for tx_id in tx_id_str.split(',')]
-                    db_txs = [db_tx for db_tx in db['transactions'].find(id=tx_ids)]
-                    block['transactions'] = db_txs
-        return jsonify(chain_to_send)
+            chain_to_send.append(hexlify_block(block))
+            # recover all Tx objects from db
+            tx_id_str = block['transactions']
+            if tx_id_str is not None:
+                tx_ids = [int(tx_id) for tx_id in tx_id_str.split(',')]
+                db_txs = [db_tx for db_tx in db['transactions'].find(id=tx_ids)]
+                block['transactions'] = db_txs
+    return jsonify(chain_to_send)
     # Send our chain to whomever requested it
 
 
