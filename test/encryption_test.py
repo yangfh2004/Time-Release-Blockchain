@@ -9,9 +9,9 @@ class TestElgamalEncryption(unittest.TestCase):
                                             bit_length=20)
 
     def test_pubkey(self):
-        self.assertEqual(0x1ff6, self.pub.g, "Public key g part is not correct!")
-        self.assertEqual(0x92901, self.pub.h, "Public key h part is not correct!")
-        self.assertEqual(0xb8433, self.pub.p, "Public key p part is not correct!")
+        self.assertEqual(8182, self.pub.g, "Public key g part is not correct!")
+        self.assertEqual(405406, self.pub.h, "Public key h part is not correct!")
+        self.assertEqual(754739, self.pub.p, "Public key p part is not correct!")
 
     def test_python_version(self):
         self.assertTrue(sys.version_info >= (3, 7), "Python version is too low!")
